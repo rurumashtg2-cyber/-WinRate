@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>胜率 WinRate</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:     #f0f2f7;
+  --card:   #ffffff;
+  --border: rgba(0,0,0,0.07);
+  --text:   #14172a;
+  --t2:     #5e6880;
+  --t3:     #aab0c4;
+  --green:  #00b96b;
+  --green2: #009958;
+  --red:    #e8364f;
+  --yellow: #d97706;
+  --blue:   #3b82f6;
+  --sh: 0 1px 3px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.04);
+}
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; font-size:14px; min-height:100vh; }
+
+/* ── NAV ── */
+nav {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 40px; height:64px;
+  background:#fff; border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:50;
+}
+.logo {
+  display:flex; align-items:center; gap:8px;
+  font-family:'Syne',sans-serif; font-weight:800;
+}
+.logo-zh { font-size:24px; color:var(--text); letter-spacing:-0.5px; }
+.logo-en { font-size:15px; color:var(--green); letter-spacing:0.5px; font-weight:800; }
+.logo-dot { width:6px; height:6px; background:var(--green); border-radius:50%; margin:0 2px; }
+
+.nav-tabs { display:flex; gap:2px; background:var(--bg); border-radius:9px; padding:3px; }
+.tab { padding:7px 22px; border-radius:7px; cursor:pointer; font-size:13px; color:var(--t2); transition:all 0.15s; font-weight:400; }
+.tab.on { background:#fff; color:var(--text); box-shadow:var(--sh); font-weight:500; }
+
+.btn-upload {
+  background:var(--green); color:#fff; border:none;
+  border-radius:9px; padding:9px 20px; font-size:13px;
+  font-weight:600; cursor:pointer; font-family:inherit;
+  display:flex; align-items:center; gap:7px; transition:all 0.15s;
+}
+.btn-upload:hover { background:var(--green2); }
+
+/* ── PAGES ── */
+.page { display:none; max-width:1020px; margin:0 auto; padding:32px 28px 80px; }
+.page.on { display:block; animation:fadeUp 0.2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* ── SECTION DIVIDER ── */
+.sec {
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:20px;
+}
+.sec + .sec-body + .sec { margin-top:36px; }
+.sec-bar { width:4px; height:22px; border-radius:2px; flex-shrink:0; }
+.sec-info { flex:1; }
+.sec-title { font-family:'Syne',sans-serif; font-weight:700; font-size:17px; line-height:1; }
+.sec-desc { font-size:12px; color:var(--t3); margin-top:3px; }
+
+/* ── CARDS ── */
+.card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:22px; box-shadow:var(--sh); }
+.g4 { display:grid; grid-template-columns:1fr 1fr 1fr 20px 1fr; gap:12px; margin-bottom:14px; align-items:stretch; }
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+
+/* ── KPI CARD ── */
+.kpi-lbl { font-size:11px; color:var(--t3); letter-spacing:1px; margin-bottom:7px; display:flex; align-items:center; gap:5px; }
+.kpi-val { font-family:'DM Mono',monospace; font-size:32px; font-weight:500; line-height:1; margin-bottom:5px; }
+.kpi-note { font-size:12px; color:var(--t2); }
+.kpi-delta { font-family:'DM Mono',monospace; font-size:11px; margin-top:7px; }
+.g  { color:var(--green); }
+.r  { color:var(--red); }
+.y  { color:var(--yellow); }
+
+/* ── HELP POPOVER ── */
+.help-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:14px; height:14px; border-radius:50%;
+  background:rgba(0,0,0,0.07); color:var(--t3);
+  font-size:9px; font-weight:700; cursor:pointer;
+  border:none; font-family:inherit; flex-shrink:0;
+  transition:all 0.15s; position:relative;
+  line-height:1;
+}
+.help-btn:hover { background:var(--green); color:#fff; }
+.help-pop {
+  position:absolute; bottom:calc(100% + 8px); left:50%;
+  transform:translateX(-50%);
+  background:#1a1d2e; color:#e8eaf2;
+  border-radius:10px; padding:12px 14px;
+  font-size:12px; line-height:1.65;
+  width:220px; z-index:200;
+  box-shadow:0 8px 24px rgba(0,0,0,0.18);
+  pointer-events:none; opacity:0;
+  transition:opacity 0.15s, transform 0.15s;
+  transform:translateX(-50%) translateY(4px);
+  white-space:normal; text-align:left;
+  font-family:'Noto Sans SC',sans-serif; font-weight:400;
+  letter-spacing:0;
+}
+.help-pop::after {
+  content:''; position:absolute; top:100%; left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:#1a1d2e;
+}
+.help-pop .pop-title {
+  font-weight:700; font-size:12px; color:#fff;
+  margin-bottom:5px; display:flex; align-items:center; gap:6px;
+}
+.help-pop .pop-formula {
+  font-family:'DM Mono',monospace; font-size:11px;
+  color:#a0f0c8; background:rgba(255,255,255,0.06);
+  border-radius:5px; padding:5px 8px; margin:6px 0;
+}
+.help-pop .pop-rules { color:#b0b8d0; }
+.help-pop .pop-rule { display:flex; gap:6px; margin-bottom:2px; }
+.help-pop .pop-rule span:first-child { color:#a0f0c8; font-family:'DM Mono',monospace; flex-shrink:0; }
+.help-btn:hover .help-pop, .help-btn:focus .help-pop {
+  opacity:1; transform:translateX(-50%) translateY(0);
+  pointer-events:auto;
+}
+
+/* ── INSIGHT CARD ── */
+.insight-header {
+  font-size:12px; font-weight:600; color:var(--t2);
+  letter-spacing:0.3px; margin-bottom:14px;
+}
+.verdict-pill {
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius:9px; padding:9px 14px; margin-bottom:14px; width:100%;
+}
+.verdict-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.verdict-name { font-size:14px; font-weight:700; }
+.verdict-score { font-size:12px; color:var(--t2); margin-left:auto; font-family:'DM Mono',monospace; }
+
+.ins-item {
+  display:flex; align-items:flex-start; gap:10px;
+  border-radius:9px; padding:11px 13px; margin-bottom:8px;
+}
+.ins-item:last-child { margin-bottom:0; }
+.ins-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.ins-title { font-size:12px; font-weight:600; margin-bottom:3px; }
+.ins-body { font-size:12px; color:var(--t2); line-height:1.65; }
+
+/* ── LINE CHART ── */
+.chart-wrap { position:relative; }
+svg { display:block; overflow:visible; }
+.tip {
+  position:absolute; background:#fff; border:1px solid rgba(0,0,0,0.09);
+  border-radius:9px; padding:10px 14px; font-size:11px;
+  pointer-events:none; opacity:0; transition:opacity 0.12s; z-index:99;
+  white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,0.1);
+}
+.tip.on { opacity:1; }
+.tip-t { font-weight:600; font-size:12px; margin-bottom:5px; }
+.tip-r { display:flex; justify-content:space-between; gap:18px; color:var(--t2); margin-bottom:2px; }
+.tip-v { font-family:'DM Mono',monospace; color:var(--text); }
+
+/* ── PNL CARDS ── */
+.pnl-card {
+  background:#fff; border:1px solid var(--border);
+  border-radius:12px; padding:20px; box-shadow:var(--sh);
+}
+.pnl-lbl { font-size:11px; color:var(--t3); letter-spacing:0.5px; margin-bottom:7px; }
+.pnl-val { font-family:'DM Mono',monospace; font-size:28px; font-weight:500; line-height:1.1; margin-bottom:5px; }
+.pnl-note { font-size:12px; color:var(--t2); }
+
+.pnl-empty {
+  background:#fff; border:2px dashed rgba(0,0,0,0.08);
+  border-radius:14px; padding:36px; text-align:center;
+}
+.pnl-empty-icon { font-size:30px; margin-bottom:10px; }
+.pnl-empty-t { font-size:14px; color:var(--t2); font-weight:500; margin-bottom:5px; }
+.pnl-empty-d { font-size:12px; color:var(--t3); }
+
+/* trade table */
+.tbl-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+thead tr { border-bottom:1px solid var(--border); }
+th { text-align:left; padding:8px 10px; color:var(--t3); font-size:11px; letter-spacing:0.8px; font-weight:400; white-space:nowrap; }
+td { padding:10px 10px; border-bottom:1px solid var(--border); font-size:13px; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:var(--bg); }
+.mono { font-family:'DM Mono',monospace; }
+.tbadge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-family:'DM Mono',monospace; }
+.tw { background:rgba(0,185,107,0.1); color:var(--green); border:1px solid rgba(0,185,107,0.2); }
+.tl { background:rgba(232,54,79,0.1);  color:var(--red);   border:1px solid rgba(232,54,79,0.2); }
+.th { background:rgba(59,130,246,0.1); color:var(--blue);  border:1px solid rgba(59,130,246,0.2); }
+.ts { background:rgba(0,0,0,0.04);     color:var(--t3);    border:1px solid var(--border); }
+
+/* ── UPLOAD PAGE ── */
+.drop-zone {
+  border:2px dashed rgba(0,185,107,0.3); border-radius:16px;
+  padding:48px 20px; text-align:center; cursor:pointer;
+  background:#fff; transition:all 0.2s; box-shadow:var(--sh); margin-bottom:16px;
+}
+.drop-zone:hover, .drop-zone.over { border-color:var(--green); background:rgba(0,185,107,0.02); }
+.drop-icon { font-size:40px; margin-bottom:12px; }
+.drop-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; margin-bottom:7px; }
+.drop-sub { color:var(--t2); font-size:13px; line-height:1.6; margin-bottom:20px; }
+.file-btn { display:inline-block; background:var(--green); color:#fff; border-radius:9px; padding:10px 28px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.file-btn:hover { background:var(--green2); }
+#fi { display:none; }
+
+.fmt-guide { background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:18px; box-shadow:var(--sh); }
+.fmt-label { font-size:10px; color:var(--t3); letter-spacing:1.5px; font-family:'DM Mono',monospace; margin-bottom:12px; }
+.fmt-cols { display:grid; grid-template-columns:90px repeat(3,1fr) 6px repeat(3,1fr); gap:5px; align-items:center; margin-bottom:8px; }
+.fc { padding:8px 8px; border-radius:7px; text-align:center; font-family:'DM Mono',monospace; font-size:11px; line-height:1.5; }
+.fc-sym  { background:rgba(0,185,107,0.08); color:var(--green);  border:1px solid rgba(0,185,107,0.2); }
+.fc-buy  { background:rgba(59,130,246,0.07); color:var(--blue);   border:1px solid rgba(59,130,246,0.18); }
+.fc-sell { background:rgba(232,54,79,0.07);  color:var(--red);    border:1px solid rgba(232,54,79,0.18); }
+.fc-opt  { background:var(--bg); color:var(--t3); border:1px solid var(--border); }
+.fmt-div { background:var(--border); width:1px; height:36px; margin:0 auto; }
+.fmt-ex { background:var(--bg); border-radius:7px; padding:8px 10px; font-family:'DM Mono',monospace; font-size:12px; display:grid; grid-template-columns:90px repeat(3,1fr) 6px repeat(3,1fr); gap:5px; align-items:center; }
+.fmt-notes { font-size:12px; color:var(--t2); line-height:1.8; margin-top:10px; }
+
+.results { background:#fff; border:1px solid var(--border); border-radius:14px; padding:24px; box-shadow:var(--sh); display:none; margin-top:16px; }
+.results.on { display:block; animation:fadeUp 0.3s ease; }
+.res-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.res-title { font-family:'Syne',sans-serif; font-weight:700; font-size:17px; }
+.res-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+.res-m { background:var(--bg); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
+.res-ml { font-size:10px; color:var(--t3); letter-spacing:1px; font-family:'DM Mono',monospace; margin-bottom:5px; }
+.res-mv { font-family:'DM Mono',monospace; font-size:24px; font-weight:500; }
+.save-bar { background:rgba(0,185,107,0.06); border:1px solid rgba(0,185,107,0.18); border-radius:10px; padding:13px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+
+/* ── BUTTONS ── */
+.btn-g { background:var(--green); color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.btn-g:hover { background:var(--green2); }
+.btn-n { background:transparent; border:1px solid rgba(0,0,0,0.12); color:var(--t2); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.btn-n:hover { color:var(--text); }
+
+/* ── HISTORY ── */
+.snap-list { display:flex; flex-direction:column; gap:8px; }
+.snap { background:#fff; border:1px solid var(--border); border-radius:11px; padding:13px 16px; display:flex; align-items:center; gap:14px; box-shadow:var(--sh); }
+.snap-date { font-family:'DM Mono',monospace; font-size:11px; color:var(--t3); min-width:80px; }
+.snap-score { font-family:'DM Mono',monospace; font-size:20px; font-weight:500; min-width:40px; }
+.snap-stats { display:flex; gap:14px; flex:1; flex-wrap:wrap; }
+.snap-stat { font-size:12px; color:var(--t2); }
+.snap-stat span { font-family:'DM Mono',monospace; color:var(--text); }
+.snap-d { font-family:'DM Mono',monospace; font-size:11px; padding:2px 8px; border-radius:20px; }
+.dg { background:rgba(0,185,107,0.1); color:var(--green); }
+.dr { background:rgba(232,54,79,0.1); color:var(--red); }
+.snap-del { width:26px; height:26px; border-radius:6px; background:rgba(232,54,79,0.07); border:1px solid rgba(232,54,79,0.15); color:var(--red); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.snap-del:hover { background:rgba(232,54,79,0.15); }
+
+.empty { text-align:center; padding:52px; color:var(--t3); }
+.empty-icon { font-size:32px; margin-bottom:12px; }
+.empty-t { font-size:15px; color:var(--t2); font-weight:500; margin-bottom:6px; }
+.empty-d { font-size:13px; line-height:1.7; max-width:300px; margin:0 auto; }
+
+.fi-input { width:100%; background:var(--bg); border:1px solid rgba(0,0,0,0.11); border-radius:7px; padding:9px 11px; font-size:13px; color:var(--text); font-family:'DM Mono',monospace; outline:none; transition:border-color 0.15s; }
+.fi-input:focus { border-color:var(--green); background:#fff; }
+.fi-label { font-size:11px; color:var(--t3); letter-spacing:0.8px; display:block; margin-bottom:4px; }
+
+/* ── HERO BANNER ── */
+.hero {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 28px 40px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.hero-left { flex: 1; min-width: 0; }
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,185,107,0.08); border: 1px solid rgba(0,185,107,0.2);
+  border-radius: 20px; padding: 4px 12px; margin-bottom: 12px;
+  font-size: 11px; color: var(--green); font-weight: 600; letter-spacing: 0.5px;
+}
+.hero-title {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 22px; line-height: 1.3; margin-bottom: 8px; color: var(--text);
+}
+.hero-title em { color: var(--green); font-style: normal; }
+.hero-sub {
+  font-size: 13px; color: var(--t2); line-height: 1.7; max-width: 560px;
+}
+.hero-right {
+  display: flex; gap: 10px; flex-shrink: 0;
+}
+.hero-stat {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 20px; text-align: center; min-width: 100px;
+}
+.hero-stat-val {
+  font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500;
+  margin-bottom: 4px;
+}
+.hero-stat-lbl { font-size: 11px; color: var(--t3); }
+.hero-formula {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; margin-top: 12px;
+  font-family: 'DM Mono', monospace; font-size: 12px; color: var(--t2);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.hero-formula strong { color: var(--green); }
+@media(max-width:720px){
+  .hero { flex-direction: column; padding: 20px 16px; gap: 20px; }
+  .hero-right { display: none; }
+}
+
+/* ── AUTH MODAL ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(4px); z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity 0.2s;
+}
+.modal-overlay.on { opacity:1; pointer-events:auto; }
+.modal {
+  background:#fff; border-radius:18px; padding:36px 32px;
+  width:100%; max-width:400px; box-shadow:0 24px 60px rgba(0,0,0,0.18);
+  transform:translateY(10px); transition:transform 0.2s;
+}
+.modal-overlay.on .modal { transform:translateY(0); }
+.modal-logo { display:flex; align-items:center; gap:6px; margin-bottom:24px; }
+.modal-logo-zh { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; }
+.modal-logo-dot { width:5px; height:5px; background:var(--green); border-radius:50%; }
+.modal-logo-en { font-size:13px; color:var(--green); font-weight:800; letter-spacing:0.5px; }
+.modal-title { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; margin-bottom:6px; }
+.modal-sub { font-size:13px; color:var(--t2); margin-bottom:24px; line-height:1.6; }
+.auth-input {
+  width:100%; border:1.5px solid var(--border); border-radius:10px;
+  padding:11px 14px; font-size:14px; font-family:inherit; color:var(--text);
+  outline:none; transition:border-color 0.15s; margin-bottom:12px;
+  background:#fff;
+}
+.auth-input:focus { border-color:var(--green); }
+.auth-btn {
+  width:100%; background:var(--green); color:#fff; border:none;
+  border-radius:10px; padding:12px; font-size:14px; font-weight:600;
+  cursor:pointer; font-family:inherit; transition:all 0.15s; margin-bottom:10px;
+}
+.auth-btn:hover { background:var(--green2); }
+.auth-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.auth-msg { font-size:12px; text-align:center; color:var(--t2); line-height:1.6; }
+.auth-msg.ok { color:var(--green); }
+.auth-msg.err { color:var(--red); }
+
+/* ── USER BAR (nav right) ── */
+.user-bar { display:flex; align-items:center; gap:10px; }
+.user-avatar {
+  width:32px; height:32px; border-radius:50%;
+  background:rgba(0,185,107,0.12); border:1.5px solid rgba(0,185,107,0.25);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:600; color:var(--green);
+  cursor:pointer; flex-shrink:0;
+}
+.user-email { font-size:12px; color:var(--t2); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.btn-login {
+  background:transparent; border:1.5px solid var(--green); color:var(--green);
+  border-radius:9px; padding:7px 16px; font-size:13px; font-weight:600;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+}
+.btn-login:hover { background:var(--green); color:#fff; }
+.btn-logout {
+  background:transparent; border:1px solid var(--border); color:var(--t2);
+  border-radius:7px; padding:5px 11px; font-size:12px;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+}
+.btn-logout:hover { color:var(--red); border-color:rgba(232,54,79,0.3); }
+
+/* ── FREE LIMIT BANNER ── */
+.limit-bar {
+  background:rgba(217,119,6,0.07); border:1px solid rgba(217,119,6,0.2);
+  border-radius:10px; padding:10px 16px; margin-bottom:14px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.limit-bar-txt { font-size:12px; color:var(--yellow); }
+.limit-bar-txt strong { font-weight:700; }
+
+  text-align: center; padding: 16px; font-size: 11px;
+  color: var(--t3); border-top: 1px solid var(--border);
+  margin-top: 40px; user-select: none;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="logo">
+    <span class="logo-zh">胜率</span>
+    <div class="logo-dot"></div>
+    <span class="logo-en">WinRate</span>
+  </div>
+  <div class="nav-tabs">
+    <div class="tab on" onclick="go('overview',this)">总览</div>
+    <div class="tab" onclick="go('upload',this)">上传分析</div>
+    <div class="tab" onclick="go('history',this)">历史记录</div>
+  </div>
+  <div id="navRight" class="user-bar">
+    <button class="btn-login" onclick="openAuth()">登录 / 注册</button>
+    <button class="btn-upload" onclick="go('upload',document.querySelectorAll('.tab')[1])">
+      <span>📂</span> 上传交易记录
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ AUTH MODAL ═══ -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <div class="modal-logo">
+      <span class="modal-logo-zh">胜率</span>
+      <div class="modal-logo-dot"></div>
+      <span class="modal-logo-en">WinRate</span>
+    </div>
+    <div id="authStep1">
+      <div class="modal-title">登录 / 注册</div>
+      <div class="modal-sub">输入邮箱，我们发送一次性验证码。<br>无需密码，安全快捷。</div>
+      <input class="auth-input" type="email" id="authEmail" placeholder="your@email.com" autocomplete="email">
+      <button class="auth-btn" id="authSendBtn" onclick="sendOTP()">发送验证码</button>
+      <div class="auth-msg" id="authMsg1"></div>
+    </div>
+    <div id="authStep2" style="display:none;">
+      <div class="modal-title">输入验证码</div>
+      <div class="modal-sub" id="authStep2Sub">验证码已发送到你的邮箱</div>
+      <input class="auth-input" type="text" id="authOTP" placeholder="6位验证码" maxlength="6" autocomplete="one-time-code" style="letter-spacing:6px;font-size:20px;text-align:center;">
+      <button class="auth-btn" id="authVerifyBtn" onclick="verifyOTP()">验证登录</button>
+      <div class="auth-msg" id="authMsg2"></div>
+      <div style="text-align:center;margin-top:8px;">
+        <button onclick="showStep1()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;">← 重新填写邮箱</button>
+      </div>
+    </div>
+    <div style="text-align:right;margin-top:16px;">
+      <button onclick="closeAuth()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HERO BANNER ═══ -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">
+      <span>⚡</span> 30秒算出你交易系统的核心指标
+    </div>
+    <div class="hero-title">
+      只盯胜率，是自嗨。<br>
+      真正决定能否活下来的，只有一个数字：<em>期望值 R</em>
+    </div>
+    <div class="hero-sub">
+      期望值 R 直接告诉你这套系统长期是赚钱、打平还是必然亏钱。<br>
+      上传交易记录，立刻看清：是止盈太早拉低了 R？还是风控没做好把 R 拖成负？
+    </div>
+    <div class="hero-formula">
+      <strong>期望值 R</strong>
+      <span style="color:var(--t3)">≈</span>
+      <span>胜率 × 盈亏比 − (1 − 胜率)</span>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-stat">
+      <div class="hero-stat-val" style="color:var(--green)">R &gt; 0</div>
+      <div class="hero-stat-lbl">长期盈利</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-val" style="color:var(--yellow)">R ≈ 0</div>
+      <div class="hero-stat-lbl">被手续费磨死</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-val" style="color:var(--red)">R &lt; 0</div>
+      <div class="hero-stat-lbl">长期必亏</div>
+    </div>
+  </div>
+</div>
+<div class="page on" id="p-overview">
+
+  <!-- ▌板块一：交易能力 -->
+  <div class="sec">
+    <div class="sec-bar" style="background:var(--green)"></div>
+    <div class="sec-info">
+      <div class="sec-title">交易能力</div>
+      <div class="sec-desc" id="abilityMeta">基于历史记录最新数据</div>
+    </div>
+  </div>
+
+  <!-- 4 KPI -->
+  <div class="g4" id="kpiRow"></div>
+
+  <!-- 诊断 + 成长曲线 -->
+  <div class="g2" style="margin-bottom:0;">
+    <!-- 系统诊断 -->
+    <div class="card" id="insightCard">
+      <div class="insight-header">系统诊断</div>
+      <div id="insightBody">
+        <div class="empty" style="padding:24px;">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-t" style="font-size:13px;">暂无数据</div>
+        </div>
+      </div>
+    </div>
+    <!-- 成长曲线 -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;color:var(--t3);letter-spacing:1px;margin-bottom:3px;">能力成长曲线</div>
+          <div style="font-size:14px;font-weight:600;">期望值 · 胜率 · 盈亏比走势</div>
+        </div>
+        <span id="trendTag"></span>
+      </div>
+      <div class="chart-wrap" style="height:190px;">
+        <svg id="lineChart" style="width:100%;height:190px;"></svg>
+        <div class="tip" id="lineTip"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
+          <span style="width:10px;height:10px;background:var(--green);display:inline-block;border-radius:2px;opacity:0.7;"></span>综合分（柱）
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
+          <span style="width:16px;height:2px;background:#e8364f;display:inline-block;border-radius:1px;"></span>期望值 R
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
+          <span style="width:16px;height:2px;background:var(--blue);display:inline-block;border-radius:1px;"></span>胜率
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
+          <span style="width:16px;height:2px;background:var(--yellow);display:inline-block;border-radius:1px;"></span>盈亏比×10
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▌板块二：盈亏概览 -->
+  <div class="sec" style="margin-top:40px;">
+    <div class="sec-bar" style="background:var(--blue)"></div>
+    <div class="sec-info">
+      <div class="sec-title">盈亏概览</div>
+      <div class="sec-desc" id="pnlMeta">上传交易记录后显示</div>
+    </div>
+  </div>
+
+  <div id="pnlSection">
+    <!-- filled by drawPnl() -->
+    <div class="pnl-empty">
+      <div class="pnl-empty-icon">📂</div>
+      <div class="pnl-empty-t">还没有盈亏数据</div>
+      <div class="pnl-empty-d">点击右上角「上传交易记录」，<br>上传 Excel 后盈亏会自动展示在这里</div>
+    </div>
+  </div>
+
+</div><!-- end overview -->
+
+<!-- ═══════════════ 上传分析 ═══════════════ -->
+<div class="page" id="p-upload">
+
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">📂</div>
+    <div class="drop-title">拖拽文件到此处，或点击选择</div>
+    <div class="drop-sub">支持 Excel（.xlsx / .xls）和 CSV<br>数据仅在本地处理，不会上传到服务器</div>
+    <label class="file-btn" for="fi">选择文件</label>
+    <input type="file" id="fi" accept=".xlsx,.xls,.csv">
+  </div>
+
+  <!-- 列名识别结果 -->
+  <div id="colInfo" style="display:none;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--sh);"></div>
+
+  <!-- 格式说明 -->
+  <div class="fmt-guide">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="fmt-label" style="margin-bottom:0;">EXCEL 列格式（共 7 列）</div>
+      <button onclick="downloadTemplate()" style="display:flex;align-items:center;gap:5px;background:transparent;border:1px solid rgba(0,185,107,0.3);color:var(--green);border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,185,107,0.07)'" onmouseout="this.style.background='transparent'">
+        ⬇ 下载模板
+      </button>
+    </div>
+    <div class="fmt-cols">
+      <div class="fc fc-sym">股票</div>
+      <div class="fc fc-buy">买入价</div>
+      <div class="fc fc-buy">买入数量</div>
+      <div class="fc fc-opt">买入费用<br><span style="font-size:9px;opacity:.7">可选</span></div>
+      <div class="fmt-div"></div>
+      <div class="fc fc-sell">卖出价</div>
+      <div class="fc fc-sell">卖出数量</div>
+      <div class="fc fc-opt">卖出费用<br><span style="font-size:9px;opacity:.7">可选</span></div>
+    </div>
+    <div class="fmt-ex">
+      <span style="color:var(--green);font-weight:600;">HOOD</span>
+      <span style="color:var(--blue);">78.67</span>
+      <span style="color:var(--blue);">5</span>
+      <span style="color:var(--t3);">0.70</span>
+      <span></span>
+      <span style="color:var(--red);">82.02</span>
+      <span style="color:var(--red);">15</span>
+      <span style="color:var(--t3);">0.70</span>
+    </div>
+    <div class="fmt-notes">
+      · 买卖齐全 → 计入统计（胜率 / 盈亏比 / 期望值）<br>
+      · 只有买入 → 持仓中，暂不计入<br>
+      · 只有卖出 → 缺买入价，跳过<br>
+      · 买卖数量不同时，取较小值为成交量
+    </div>
+  </div>
+
+  <!-- 分析结果 -->
+  <div class="results" id="results">
+    <div class="res-head">
+      <div class="res-title">📊 分析结果</div>
+      <button class="btn-n" onclick="resetUpload()">重新上传</button>
+    </div>
+    <div class="res-grid" id="resMetrics"></div>
+    <div id="verdictBox"></div>
+    <div class="save-bar">
+      <div style="font-size:13px;color:var(--t2);">将此次分析保存到历史记录，追踪 <strong style="color:var(--green)">能力成长曲线</strong></div>
+      <button class="btn-g" id="saveBtn" onclick="saveToHistory()">💾 保存到历史</button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">交易明细</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>股票</th><th>买入价</th><th>买入数量</th>
+            <th>卖出价</th><th>卖出数量</th>
+            <th>盈亏%</th><th>净盈亏</th><th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="tBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 历史记录 ═══════════════ -->
+<div class="page" id="p-history">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+    <div>
+      <div style="font-size:11px;color:var(--t3);letter-spacing:1.5px;margin-bottom:4px;">HISTORY</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:22px;">历史记录</div>
+    </div>
+    <button class="btn-g" onclick="toggleForm()">+ 手动添加</button>
+  </div>
+
+  <div id="addForm" style="display:none;background:#fff;border:1px solid rgba(0,185,107,0.25);border-radius:14px;padding:22px;margin-bottom:18px;box-shadow:var(--sh);">
+    <div style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:16px;">添加记录</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+      <div><label class="fi-label">日期</label><input class="fi-input" type="date" id="f-date"></div>
+      <div><label class="fi-label">胜率 (%)</label><input class="fi-input" type="number" id="f-wr" placeholder="62.4" step="0.1"></div>
+      <div><label class="fi-label">盈亏比</label><input class="fi-input" type="number" id="f-pl" placeholder="2.38" step="0.01"></div>
+      <div><label class="fi-label">期望值 (%)</label><input class="fi-input" type="number" id="f-ex" placeholder="0.47" step="0.01"></div>
+      <div><label class="fi-label">有效交易笔数</label><input class="fi-input" type="number" id="f-tr" placeholder="24"></div>
+      <div><label class="fi-label">平均盈利 (%)</label><input class="fi-input" type="number" id="f-aw" placeholder="8.5" step="0.01"></div>
+      <div><label class="fi-label">平均亏损 (%)</label><input class="fi-input" type="number" id="f-al" placeholder="3.5" step="0.01"></div>
+      <div><label class="fi-label">备注</label><input class="fi-input" type="text" id="f-note" placeholder="本月优化止损"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-g" onclick="addManual()">保存</button>
+      <button class="btn-n" onclick="toggleForm()">取消</button>
+    </div>
+  </div>
+
+  <div id="snapList"></div>
+</div>
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+// ════════════════════════════════════════════════════
+//  ★ 填入你的 Supabase 配置（第三步获取的两个值）
+// ════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://fgckjujfcivusnwvlmfr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnY2tqdWpmY2l2dXNud3ZsbWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTY4MTcsImV4cCI6MjA4ODYzMjgxN30.YM2MBYzi9_Fr1NebSD-a5GkOQYyvjdv0Tgm0nYfOqwI';
+const FREE_LIMIT   = 5; // 免费用户最多保存条数
+
+// ── 初始化 Supabase ──────────────────────────────────
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+
+// ── LOCAL FALLBACK DATA ───────────────────────────────
+const KEY = 'shenglvv1';
+let D = [];
+let lastTrades = null;
+let lastResult = null;
+
+function demoData() {
+  return [
+    {id:1,date:'2024-09-01',胜率:48.0,盈亏比:1.42,期望值:-0.32,笔数:18,均盈:5.2,均亏:3.7,备注:'刚开始记录'},
+    {id:2,date:'2024-10-01',胜率:51.5,盈亏比:1.68,期望值:0.21, 笔数:22,均盈:5.8,均亏:3.5,备注:'优化入场条件'},
+    {id:3,date:'2024-11-01',胜率:55.0,盈亏比:1.95,期望值:0.66, 笔数:20,均盈:6.4,均亏:3.3,备注:'严格止损'},
+    {id:4,date:'2024-12-01',胜率:57.2,盈亏比:2.10,期望值:0.99, 笔数:25,均盈:7.2,均亏:3.4,备注:'胜率提升'},
+    {id:5,date:'2025-01-01',胜率:59.0,盈亏比:2.25,期望值:1.31, 笔数:28,均盈:7.8,均亏:3.5,备注:'连续正期望'},
+    {id:6,date:'2025-02-01',胜率:61.0,盈亏比:2.38,期望值:1.58, 笔数:24,均盈:8.2,均亏:3.5,备注:'盈亏比提升'},
+    {id:7,date:'2025-03-01',胜率:62.4,盈亏比:2.52,期望值:1.87, 笔数:31,均盈:8.6,均亏:3.4,备注:'最佳月份'},
+  ];
+}
+
+function localLoad() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch(e) { return []; }
+}
+function localSave() {
+  try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(e) {}
+}
+
+// ── AUTH ─────────────────────────────────────────────
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await onLogin(session.user);
+  } else {
+    D = localLoad();
+    if (!D.length) { D = demoData(); localSave(); }
+    renderNavGuest();
+    drawAll();
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      closeAuth();
+      await onLogin(session.user);
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      D = localLoad();
+      if (!D.length) { D = demoData(); localSave(); }
+      renderNavGuest();
+      drawAll();
+    }
+  });
+}
+
+async function onLogin(user) {
+  currentUser = user;
+  renderNavUser(user);
+  await loadFromCloud();
+  drawAll();
+}
+
+function renderNavGuest() {
+  document.getElementById('navRight').innerHTML = `
+    <button class="btn-login" onclick="openAuth()">登录 / 注册</button>
+    <button class="btn-upload" onclick="go('upload',document.querySelectorAll('.tab')[1])">
+      <span>📂</span> 上传交易记录
+    </button>`;
+}
+
+function renderNavUser(user) {
+  const initial = (user.email||'U')[0].toUpperCase();
+  const email = user.email || '';
+  document.getElementById('navRight').innerHTML = `
+    <div class="user-avatar" title="${email}">${initial}</div>
+    <span class="user-email">${email}</span>
+    <button class="btn-logout" onclick="signOut()">退出</button>
+    <button class="btn-upload" onclick="go('upload',document.querySelectorAll('.tab')[1])">
+      <span>📂</span> 上传交易记录
+    </button>`;
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+}
+
+// OTP flow
+let otpEmail = '';
+function openAuth() {
+  document.getElementById('authModal').classList.add('on');
+  showStep1();
+  setTimeout(()=>document.getElementById('authEmail').focus(), 200);
+}
+function closeAuth() {
+  document.getElementById('authModal').classList.remove('on');
+}
+function showStep1() {
+  document.getElementById('authStep1').style.display = '';
+  document.getElementById('authStep2').style.display = 'none';
+  document.getElementById('authMsg1').textContent = '';
+}
+
+async function sendOTP() {
+  const email = document.getElementById('authEmail').value.trim();
+  if (!email || !email.includes('@')) {
+    setAuthMsg('authMsg1', '请输入有效的邮箱地址', 'err'); return;
+  }
+  const btn = document.getElementById('authSendBtn');
+  btn.disabled = true; btn.textContent = '发送中...';
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  });
+  btn.disabled = false; btn.textContent = '发送验证码';
+  if (error) {
+    setAuthMsg('authMsg1', '发送失败：' + error.message, 'err');
+  } else {
+    otpEmail = email;
+    document.getElementById('authStep1').style.display = 'none';
+    document.getElementById('authStep2').style.display = '';
+    document.getElementById('authStep2Sub').textContent = `验证码已发送到 ${email}`;
+    setTimeout(()=>document.getElementById('authOTP').focus(), 100);
+  }
+}
+
+async function verifyOTP() {
+  const token = document.getElementById('authOTP').value.trim().replace(/\s/g,'');
+  if (token.length < 6) { setAuthMsg('authMsg2','请输入6位验证码','err'); return; }
+  const btn = document.getElementById('authVerifyBtn');
+  btn.disabled = true; btn.textContent = '验证中...';
+  const { error } = await sb.auth.verifyOtp({ email: otpEmail, token, type: 'email' });
+  btn.disabled = false; btn.textContent = '验证登录';
+  if (error) {
+    setAuthMsg('authMsg2', '验证码错误或已过期，请重试', 'err');
+  } else {
+    setAuthMsg('authMsg2', '✓ 登录成功！', 'ok');
+  }
+}
+
+function setAuthMsg(id, txt, type) {
+  const el = document.getElementById(id);
+  el.textContent = txt;
+  el.className = 'auth-msg ' + (type||'');
+}
+
+// close modal on overlay click
+document.getElementById('authModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAuth();
+});
+
+// ── CLOUD DATA ────────────────────────────────────────
+async function loadFromCloud() {
+  if (!currentUser) return;
+  const { data, error } = await sb
+    .from('histories')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('date', { ascending: true });
+  if (!error && data) {
+    D = data.map(r => ({
+      id: r.id,
+      date: r.date,
+      胜率: r.win_rate,
+      盈亏比: r.pl_ratio,
+      期望值: r.expectancy,
+      笔数: r.trade_count,
+      均盈: r.avg_win,
+      均亏: r.avg_loss,
+      备注: r.note || '',
+    }));
+  }
+}
+
+async function saveToCloud(rec) {
+  if (!currentUser) return null;
+  const { data, error } = await sb.from('histories').insert({
+    user_id: currentUser.id,
+    date: rec.date,
+    win_rate: rec.胜率,
+    pl_ratio: rec.盈亏比,
+    expectancy: rec.期望值,
+    trade_count: rec.笔数,
+    avg_win: rec.均盈,
+    avg_loss: rec.均亏,
+    note: rec.备注 || '',
+  }).select().single();
+  if (!error && data) return data.id;
+  return null;
+}
+
+async function deleteFromCloud(id) {
+  if (!currentUser) return;
+  await sb.from('histories').delete().eq('id', id).eq('user_id', currentUser.id);
+}
+
+// ── PERSIST (smart: cloud if logged in, else local) ───
+async function persist() {
+  if (!currentUser) { localSave(); }
+  // cloud writes happen inline in saveToHistory / delSnap
+}
+
+// ── SCORE ─────────────────────────────────────────────
+function score(s) {
+  return Math.round(
+    Math.min(s.胜率/70*35, 35) +
+    Math.min(s.盈亏比/3*35, 35) +
+    (s.期望值>0 ? Math.min(s.期望值/3*30, 30) : 0)
+  );
+}
+
+// ── TABS ──────────────────────────────────────────────
+function go(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('p-'+id).classList.add('on');
+  if (el) el.classList.add('on');
+  setTimeout(drawAll, 60);
+}
+
+// ── DRAW ALL ──────────────────────────────────────────
+function drawAll() {
+  D.sort((a,b) => new Date(a.date) - new Date(b.date));
+  drawKPI();
+  drawInsight();
+  drawLine();
+  drawPnl();
+  drawSnaps();
+}
+
+function svgW(el) {
+  return el&&el.parentElement ? (el.parentElement.getBoundingClientRect().width||el.parentElement.offsetWidth||0) : 0;
+}
+
+// ── KPI ───────────────────────────────────────────────
+function drawKPI() {
+  const el = document.getElementById('kpiRow');
+  if (!el) return;
+  if (!D.length) { el.innerHTML=''; return; }
+
+  const lat  = D[D.length-1];
+  const prev = D.length > 1 ? D[D.length-2] : null;
+  const sc   = score(lat);
+  const psc  = prev ? score(prev) : null;
+
+  const meta = document.getElementById('abilityMeta');
+  if (meta) meta.textContent = `最近更新：${lat.date}　·　共 ${D.length} 次记录`;
+
+  const dv = (cur, pre, suf='') => {
+    if (pre == null) return '<div style="height:18px"></div>';
+    const d = +(cur - pre).toFixed(2);
+    const cls = d >= 0 ? 'g' : 'r';
+    return `<div class="kpi-delta ${cls}">${d>=0?'↑':'↓'} ${d>=0?'+':''}${d}${suf} vs 上次</div>`;
+  };
+
+  const c = (v, g, y) => v>=g?'var(--green)':v>=y?'var(--yellow)':'var(--red)';
+  const sc_c = c(sc,70,50), wr_c = c(lat.胜率,55,45);
+  const pl_c = c(lat.盈亏比,2.0,1.5);
+  const ex_c = lat.期望值>0?'var(--green)':'var(--red)';
+
+  const helpBtn = (id) => {
+    const defs = {
+      ex:{title:'期望值 R',formula:'R = 胜率 × 均盈 − (1−胜率) × 均亏',body:'每笔交易的平均预期回报。最核心的系统评估指标。',rules:[['R > 0','长期执行大概率盈利'],['R ≈ 0','被手续费和滑点磨死'],['R < 0','交易越多亏越多']]},
+      wr:{title:'胜率',formula:'盈利笔数 ÷ 总有效交易笔数',body:'反映入场准确性。胜率高不代表能盈利，需配合盈亏比看。',rules:[['≥ 60%','入场质量良好'],['50–60%','有优势但不突出'],['< 50%','亏损交易过多']]},
+      pl:{title:'盈亏比',formula:'平均盈利幅度 ÷ 平均亏损幅度',body:'反映止盈止损设置质量。即使胜率不高，高盈亏比也能长期赚钱。',rules:[['≥ 2.0','专业标准，推荐目标'],['1.5–2.0','尚可，有优化空间'],['< 1.5','盈利覆盖不了亏损']]},
+      sc:{title:'综合能力分',formula:'胜率得分(35) + 盈亏比得分(35) + 期望值得分(30)',body:'综合三项指标加权评分，满分100。用于对比不同时期能力变化。',rules:[['≥ 70','优秀系统'],['50–70','正在成长'],['< 50','需要优化']]}
+    };
+    const d = defs[id];
+    return `<button class="help-btn" tabindex="0">?<div class="help-pop">
+      <div class="pop-title">${d.title}</div>
+      <div class="pop-formula">${d.formula}</div>
+      <div style="color:#b0b8d0;margin-bottom:6px;">${d.body}</div>
+      <div class="pop-rules">${d.rules.map(r=>`<div class="pop-rule"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('')}</div>
+    </div></button>`;
+  };
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="kpi-lbl">期望值 R ${helpBtn('ex')}</div>
+      <div class="kpi-val" style="color:${ex_c}">${lat.期望值>0?'+':''}${lat.期望值.toFixed(2)}%</div>
+      <div class="kpi-note">每笔交易平均回报</div>
+      ${dv(lat.期望值, prev?.期望值, '%')}
+    </div>
+    <div class="card">
+      <div class="kpi-lbl">胜率 ${helpBtn('wr')}</div>
+      <div class="kpi-val" style="color:${wr_c}">${lat.胜率.toFixed(1)}%</div>
+      <div class="kpi-note">${lat.笔数||0} 笔有效交易</div>
+      ${dv(lat.胜率, prev?.胜率, '%')}
+    </div>
+    <div class="card">
+      <div class="kpi-lbl">盈亏比 ${helpBtn('pl')}</div>
+      <div class="kpi-val" style="color:${pl_c}">${lat.盈亏比.toFixed(2)}</div>
+      <div class="kpi-note">均盈 ÷ 均亏</div>
+      ${dv(lat.盈亏比, prev?.盈亏比)}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;">
+      <div style="width:1px;background:var(--border);align-self:stretch;margin:4px 0;"></div>
+    </div>
+    <div class="card" style="border-left:3px solid rgba(0,185,107,0.25);">
+      <div class="kpi-lbl">综合能力分 ${helpBtn('sc')}</div>
+      <div class="kpi-val" style="color:${sc_c}">${sc}</div>
+      <div class="kpi-note" style="color:var(--t3)">满分 100</div>
+      ${dv(sc, psc)}
+    </div>`;
+}
+
+// ── INSIGHT ───────────────────────────────────────────
+function drawInsight() {
+  const el = document.getElementById('insightBody');
+  if (!el||!D.length) return;
+  const lat = D[D.length-1];
+  const sc = score(lat);
+  const { 胜率:wr, 盈亏比:pl, 期望值:ex } = lat;
+
+  let vName, vColor, vBg;
+  if (ex>1.2&&wr>=58&&pl>=2.0) { vName='优秀系统'; vColor='var(--green)'; vBg='rgba(0,185,107,0.08)'; }
+  else if (ex>0)               { vName='正期望系统'; vColor='var(--yellow)'; vBg='rgba(217,119,6,0.08)'; }
+  else                         { vName='负期望系统'; vColor='var(--red)'; vBg='rgba(232,54,79,0.07)'; }
+
+  const items = [];
+  if (wr>=60)      items.push({icon:'✅',title:'胜率良好',body:`胜率 ${wr.toFixed(1)}%，超过 60% 基准线，入场时机和选股质量不错。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
+  else if (wr>=50) items.push({icon:'🟡',title:'胜率尚可，有提升空间',body:`胜率 ${wr.toFixed(1)}%，有正向优势但不突出。建议收紧入场条件，只在高把握机会出手。`,color:'var(--yellow)',bg:'rgba(217,119,6,0.05)'});
+  else             items.push({icon:'⚠️',title:'胜率偏低，需重新审视入场',body:`胜率 ${wr.toFixed(1)}%，超过一半的交易亏损。回顾入场条件，减少低质量信号。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
+
+  if (pl>=2.0)      items.push({icon:'✅',title:'盈亏比达标',body:`盈亏比 ${pl.toFixed(2)}，达到专业标准（≥2.0）。每次盈利是亏损的 ${pl.toFixed(1)} 倍。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
+  else if (pl>=1.5) items.push({icon:'🟡',title:'盈亏比偏低，建议优化',body:`盈亏比 ${pl.toFixed(2)}，距目标 2.0 有差距。尝试拓宽止盈位，或收紧止损。`,color:'var(--yellow)',bg:'rgba(217,119,6,0.05)'});
+  else              items.push({icon:'⚠️',title:'盈亏比不足，关键问题',body:`盈亏比仅 ${pl.toFixed(2)}，盈利覆盖不了亏损。优先修复止盈止损策略。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
+
+  if (ex>0) items.push({icon:'✅',title:'正期望，可以持续执行',body:`期望值 +${ex.toFixed(2)}%，每笔平均预期盈利 ${ex.toFixed(2)}%。长期坚持执行会稳定累积利润。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
+  else      items.push({icon:'❌',title:'负期望，交易越多亏越多',body:`期望值 ${ex.toFixed(2)}%，每笔平均预期亏损。先修复胜率或盈亏比，再考虑加仓。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
+
+  el.innerHTML = `
+    <div class="verdict-pill" style="background:${vBg};">
+      <div class="verdict-dot" style="background:${vColor}"></div>
+      <div class="verdict-name" style="color:${vColor}">${vName}</div>
+      <div class="verdict-score">${sc} 分</div>
+    </div>
+    ${items.map(it=>`<div class="ins-item" style="background:${it.bg};">
+      <span class="ins-icon">${it.icon}</span>
+      <div><div class="ins-title" style="color:${it.color}">${it.title}</div>
+      <div class="ins-body">${it.body}</div></div>
+    </div>`).join('')}`;
+}
+
+// ── LINE CHART ────────────────────────────────────────
+function drawLine() {
+  const svg = document.getElementById('lineChart');
+  if (!svg) return;
+  const W = svgW(svg);
+  if (!W||!D.length) { svg.innerHTML=''; return; }
+
+  const H=190, pad={t:16,r:16,b:30,l:36};
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const n = D.length;
+  const xp = i => pad.l+(i/Math.max(n-1,1))*(W-pad.l-pad.r);
+  const yp = v => pad.t+(1-Math.max(0,Math.min(100,v))/100)*(H-pad.t-pad.b);
+
+  const scores   = D.map(score);
+  const wrs      = D.map(d => d.胜率);
+  const pls      = D.map(d => d.盈亏比*10);
+  const exMin=-5, exMax=5;
+  const exScaled = D.map(d => (d.期望值-exMin)/(exMax-exMin)*100);
+
+  let h='';
+  [0,25,50,75,100].forEach(v=>{
+    const y=yp(v);
+    h+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="rgba(0,0,0,0.05)" stroke-width="1"/>`;
+    h+=`<text x="${pad.l-4}" y="${y+4}" text-anchor="end" fill="rgba(0,0,0,0.2)" font-size="9" font-family="DM Mono,monospace">${v}</text>`;
+  });
+  D.forEach((d,i)=>{
+    h+=`<text x="${xp(i)}" y="${H-3}" text-anchor="middle" fill="rgba(0,0,0,0.2)" font-size="9" font-family="DM Mono,monospace">${d.date.slice(5)}</text>`;
+  });
+
+  const zeroY = yp((-exMin)/(exMax-exMin)*100);
+  h+=`<line x1="${pad.l}" y1="${zeroY}" x2="${W-pad.r}" y2="${zeroY}" stroke="rgba(232,54,79,0.2)" stroke-width="1" stroke-dasharray="3,3"/>`;
+
+  const bw = Math.max((W-pad.l-pad.r)/Math.max(n,1)*0.45, 4);
+  scores.forEach((v,i)=>{
+    const x=xp(i)-bw/2, y=yp(v), bh=H-pad.b-y;
+    h+=`<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="3" fill="${i===n-1?'#00b96b':'rgba(0,185,107,0.25)'}"/>`;
+  });
+
+  const poly=(vals,col,dash='')=>{
+    if (vals.length<2) return '';
+    return `<polyline points="${vals.map((v,i)=>`${xp(i)},${yp(v)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+  };
+  h+=poly(pls,'#d97706');
+  h+=poly(wrs,'#3b82f6','4,3');
+  h+=poly(exScaled,'#e8364f','6,2');
+
+  exScaled.forEach((v,i)=>{
+    h+=`<circle cx="${xp(i)}" cy="${yp(v)}" r="3.5" fill="white" stroke="#e8364f" stroke-width="1.8" style="cursor:pointer" data-i="${i}"/>`;
+  });
+  svg.innerHTML=h;
+
+  // trend tag
+  const tag=document.getElementById('trendTag');
+  if (tag&&D.length>=2) {
+    const d=+(D[D.length-1].期望值-D[D.length-2].期望值).toFixed(2);
+    const col=d>0?'var(--green)':d<0?'var(--red)':'var(--t3)';
+    const bg=d>0?'rgba(0,185,107,0.1)':d<0?'rgba(232,54,79,0.1)':'rgba(0,0,0,0.04)';
+    const bd=d>0?'rgba(0,185,107,0.2)':d<0?'rgba(232,54,79,0.2)':'var(--border)';
+    tag.style.cssText=`font-family:'DM Mono',monospace;font-size:12px;padding:4px 11px;border-radius:20px;background:${bg};color:${col};border:1px solid ${bd};`;
+    tag.textContent=d>0?`R ↑ +${d}%`:d<0?`R ↓ ${d}%`:'R → 持平';
+  }
+
+  const tip=document.getElementById('lineTip');
+  svg.querySelectorAll('circle[data-i]').forEach(c=>{
+    c.addEventListener('mouseenter',()=>{
+      const i=parseInt(c.dataset.i); if(isNaN(i)||!D[i]) return;
+      const d=D[i],s=score(d);
+      const exColor=d.期望值>0?'var(--green)':'var(--red)';
+      tip.className='tip on';
+      tip.innerHTML=`<div class="tip-t">${d.date}</div>
+        <div class="tip-r"><span>期望值 R</span><span class="tip-v" style="color:${exColor}">${d.期望值>0?'+':''}${d.期望值}%</span></div>
+        <div class="tip-r"><span>胜率</span><span class="tip-v">${d.胜率}%</span></div>
+        <div class="tip-r"><span>盈亏比</span><span class="tip-v">${d.盈亏比}</span></div>
+        <div class="tip-r"><span>综合分</span><span class="tip-v" style="color:var(--green)">${s}</span></div>
+        ${d.备注?`<div class="tip-r"><span>备注</span><span class="tip-v" style="font-family:inherit">${d.备注}</span></div>`:''}`;
+      const cx=parseFloat(c.getAttribute('cx')), cy=parseFloat(c.getAttribute('cy'));
+      tip.style.left=(cx+8)+'px'; tip.style.top=Math.max(0,cy-95)+'px';
+    });
+    c.addEventListener('mouseleave',()=>tip.className='tip');
+  });
+}
+
+// ── PNL SECTION ───────────────────────────────────────
+function drawPnl() {
+  const sec=document.getElementById('pnlSection'); if(!sec) return;
+  if (!lastTrades||!lastTrades.length) {
+    sec.innerHTML=`<div class="pnl-empty"><div class="pnl-empty-icon">📂</div><div class="pnl-empty-t">还没有盈亏数据</div><div class="pnl-empty-d">点击右上角「上传交易记录」，上传 Excel 后盈亏会显示在这里</div></div>`;
+    return;
+  }
+  const done=lastTrades.filter(t=>t.status==='盈利'||t.status==='亏损');
+  const wins=done.filter(t=>t.status==='盈利');
+  const loss=done.filter(t=>t.status==='亏损');
+  const hold=lastTrades.filter(t=>t.status==='持仓中');
+  const totalNet=done.reduce((s,t)=>s+t.net,0)-done.reduce((s,t)=>s+t.fee,0)+done.reduce((s,t)=>s+t.fee,0);
+  const tNet=done.reduce((s,t)=>s+t.net,0);
+  const tCost=done.reduce((s,t)=>s+t.bp*t.qty,0);
+  const tPct=tCost>0?tNet/tCost*100:0;
+  const wNet=wins.reduce((s,t)=>s+t.net,0);
+  const lNet=loss.reduce((s,t)=>s+t.net,0);
+  const tFee=done.reduce((s,t)=>s+t.fee,0);
+  const winRate=done.length?wins.length/done.length*100:0;
+  const meta=document.getElementById('pnlMeta');
+  if(meta) meta.textContent=`已完成 ${done.length} 笔 · 持仓中 ${hold.length} 笔`;
+  const nc=tNet>=0?'var(--green)':'var(--red)';
+  const fm=v=>{const a=Math.abs(v);return(v>=0?'+':'-')+'$'+(a>=10000?(a/1000).toFixed(1)+'k':a.toFixed(2));};
+  const fp=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
+  sec.innerHTML=`
+    <div class="g3" style="margin-bottom:14px;">
+      <div class="pnl-card"><div class="pnl-lbl">总净盈亏</div><div class="pnl-val" style="color:${nc}">${fm(tNet)}</div><div class="pnl-note">总盈亏率 <strong style="font-family:'DM Mono',monospace;color:${nc}">${fp(tPct)}</strong></div></div>
+      <div class="pnl-card"><div class="pnl-lbl">盈利交易</div><div class="pnl-val" style="color:var(--green)">${fm(wNet)}</div><div class="pnl-note">${wins.length} 笔 · 胜率 <strong style="font-family:'DM Mono',monospace;color:var(--green)">${winRate.toFixed(1)}%</strong></div></div>
+      <div class="pnl-card"><div class="pnl-lbl">亏损交易</div><div class="pnl-val" style="color:var(--red)">${fm(lNet)}</div><div class="pnl-note">${loss.length} 笔 · 手续费 <strong style="font-family:'DM Mono',monospace">$${tFee.toFixed(2)}</strong></div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">交易明细</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>股票</th><th>买入价</th><th>买入数量</th><th>卖出价</th><th>卖出数量</th><th>盈亏%</th><th>净盈亏</th><th>状态</th></tr></thead>
+        <tbody>${lastTrades.map(t=>{
+          const bc=t.status==='盈利'?'tw':t.status==='亏损'?'tl':t.status==='持仓中'?'th':'ts';
+          const pv=t.status==='盈利'?`<span class="g">+${t.pct.toFixed(2)}%</span>`:t.status==='亏损'?`<span class="r">${t.pct.toFixed(2)}%</span>`:'—';
+          const nv=t.status==='盈利'?`<span class="g">+$${t.net.toFixed(2)}</span>`:t.status==='亏损'?`<span class="r">-$${Math.abs(t.net).toFixed(2)}</span>`:'—';
+          return `<tr><td class="mono" style="font-weight:600">${t.sym}</td><td class="mono">${t.bp>0?'$'+t.bp.toFixed(2):'—'}</td><td class="mono">${t.bq>0?t.bq:'—'}</td><td class="mono">${t.sp>0?'$'+t.sp.toFixed(2):'—'}</td><td class="mono">${t.sq>0?t.sq:'—'}</td><td class="mono">${pv}</td><td class="mono">${nv}</td><td><span class="tbadge ${bc}">${t.status}</span></td></tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>`;
+}
+
+// ── UPLOAD ────────────────────────────────────────────
+const dropZone=document.getElementById('dropZone');
+const fileIn=document.getElementById('fi');
+if(dropZone){
+  dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
+  dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');if(e.dataTransfer.files[0])readFile(e.dataTransfer.files[0]);});
+}
+if(fileIn) fileIn.addEventListener('change',e=>{if(e.target.files[0])readFile(e.target.files[0]);});
+
+function readFile(file) {
+  const r=new FileReader();
+  r.onload=e=>{
+    try {
+      let rows=[];
+      if(file.name.toLowerCase().endsWith('.csv')){rows=parseCSV(e.target.result);}
+      else{const wb=XLSX.read(e.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{defval:''});}
+      analyze(rows);
+    } catch(err){alert('解析失败：'+err.message);}
+  };
+  file.name.toLowerCase().endsWith('.csv')?r.readAsText(file,'UTF-8'):r.readAsBinaryString(file);
+}
+
+function parseCSV(txt){
+  const lines=txt.trim().split('\n');
+  const hdrs=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(l=>{const vs=l.split(',').map(v=>v.trim().replace(/"/g,''));const o={};hdrs.forEach((h,i)=>o[h]=vs[i]||'');return o;});
+}
+
+function fc(row,cands){
+  const keys=Object.keys(row);
+  for(const c of cands){const f=keys.find(k=>k.toLowerCase().replace(/\s/g,'').includes(c.toLowerCase().replace(/\s/g,'')));if(f)return f;}
+  return null;
+}
+
+function analyze(rows) {
+  if(!rows.length){alert('文件为空');return;}
+  const s=rows[0];
+  const cSym=fc(s,['股票','symbol','ticker','code','stock','名称']);
+  const cBP=fc(s,['买入价','buyprice','buy_price','入场价','买价']);
+  const cBQ=fc(s,['买入数量','买入股数','buyqty','buy_qty']);
+  const cBF=fc(s,['买入费用','买入手续费','buyfee','buy_fee']);
+  const cSP=fc(s,['卖出价','sellprice','sell_price','出场价','卖价']);
+  const cSQ=fc(s,['卖出数量','卖出股数','sellqty','sell_qty']);
+  const cSF=fc(s,['卖出费用','卖出手续费','sellfee','sell_fee']);
+
+  if(!cSym||!cBP||!cSP){
+    alert(`无法识别列名。\n已找到的列：${Object.keys(s).join('、')}\n\n请确保列名包含：股票、买入价、卖出价。`);
+    return;
+  }
+
+  const colInfo=document.getElementById('colInfo');
+  if(colInfo){
+    const cols=[{lbl:'股票',v:cSym,ok:!!cSym},{lbl:'买入价',v:cBP,ok:!!cBP},{lbl:'买入数量',v:cBQ,ok:!!cBQ},{lbl:'买入费用',v:cBF,ok:!!cBF},{lbl:'卖出价',v:cSP,ok:!!cSP},{lbl:'卖出数量',v:cSQ,ok:!!cSQ},{lbl:'卖出费用',v:cSF,ok:!!cSF}];
+    colInfo.innerHTML=`<div style="font-size:11px;color:var(--t3);letter-spacing:1px;margin-bottom:8px;">已识别列名</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${cols.map(c=>`<span style="font-size:11px;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;background:${c.ok?'rgba(0,185,107,0.08)':'rgba(0,0,0,0.04)'};color:${c.ok?'var(--green)':'var(--t3)'};border:1px solid ${c.ok?'rgba(0,185,107,0.2)':'var(--border)'};">${c.ok?'✓':'—'} ${c.lbl}${c.ok?' → '+c.v:''}</span>`).join('')}</div>`;
+    colInfo.style.display='block';
+  }
+
+  const trades=[];
+  rows.forEach(row=>{
+    const sym=String(row[cSym]||'').trim(); if(!sym) return;
+    const bp=parseFloat(row[cBP])||0, bq=cBQ?(parseFloat(row[cBQ])||0):0, bf=cBF?(parseFloat(row[cBF])||0):0;
+    const sp=parseFloat(row[cSP])||0, sq=cSQ?(parseFloat(row[cSQ])||0):0, sf=cSF?(parseFloat(row[cSF])||0):0;
+    const bqF=bq>0?bq:(bp>0?1:0), sqF=sq>0?sq:(sp>0?1:0);
+    if(bp>0&&sp>0){const qty=Math.min(bqF,sqF),fee=bf+sf,gross=(sp-bp)*qty,net=gross-fee,pct=(sp-bp)/bp*100;trades.push({sym,bp,bq:bqF,sp,sq:sqF,qty,fee,net,pct,status:net>=0?'盈利':'亏损'});}
+    else if(bp>0){trades.push({sym,bp,bq:bqF,sp:0,sq:0,qty:bqF,fee:bf,net:0,pct:0,status:'持仓中'});}
+    else{trades.push({sym,bp:0,bq:0,sp,sq:sqF,qty:sqF,fee:sf,net:0,pct:0,status:'缺数据'});}
+  });
+  lastTrades=trades;
+
+  const done=trades.filter(t=>t.status==='盈利'||t.status==='亏损');
+  const wins=done.filter(t=>t.status==='盈利'), loss=done.filter(t=>t.status==='亏损');
+  const 胜率=done.length?wins.length/done.length*100:0;
+  const 均盈=wins.length?wins.reduce((s,t)=>s+t.pct,0)/wins.length:0;
+  const 均亏=loss.length?Math.abs(loss.reduce((s,t)=>s+t.pct,0)/loss.length):0;
+  const 盈亏比=均亏>0?均盈/均亏:0;
+  const 期望值=(胜率/100)*均盈-((100-胜率)/100)*均亏;
+
+  lastResult={date:new Date().toISOString().slice(0,10),胜率:+胜率.toFixed(2),盈亏比:+盈亏比.toFixed(2),期望值:+期望值.toFixed(2),笔数:done.length,均盈:+均盈.toFixed(2),均亏:+均亏.toFixed(2),备注:''};
+
+  const sc=score(lastResult);
+  const wc=胜率>=55?'var(--green)':胜率>=45?'var(--yellow)':'var(--red)';
+  const pc=盈亏比>=2?'var(--green)':盈亏比>=1.5?'var(--yellow)':'var(--red)';
+  const ec=期望值>0?'var(--green)':'var(--red)';
+  document.getElementById('resMetrics').innerHTML=`
+    <div class="res-m"><div class="res-ml">综合分</div><div class="res-mv" style="color:${ec}">${sc}</div></div>
+    <div class="res-m"><div class="res-ml">胜率</div><div class="res-mv" style="color:${wc}">${胜率.toFixed(1)}%</div></div>
+    <div class="res-m"><div class="res-ml">盈亏比</div><div class="res-mv" style="color:${pc}">${盈亏比.toFixed(2)}</div></div>
+    <div class="res-m"><div class="res-ml">期望值 R</div><div class="res-mv" style="color:${ec}">${期望值>0?'+':''}${期望值.toFixed(2)}%</div></div>`;
+
+  let icon,title,desc,bg;
+  if(期望值>1&&胜率>=55&&盈亏比>=2){icon='🏆';title='优秀系统';desc='正期望，胜率与盈亏比双达标，继续保持执行纪律。';bg='rgba(0,185,107,0.07);border:1px solid rgba(0,185,107,0.2)';}
+  else if(期望值>0){icon='📈';title='正期望系统';desc=盈亏比<2?'系统正期望，盈亏比未达2.0，建议拓宽止盈位。':'正期望系统，胜率还有提升空间。';bg='rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2)';}
+  else{icon='⚠️';title='负期望系统';desc='每笔平均预期亏损，先修复胜率或盈亏比再扩仓。';bg='rgba(232,54,79,0.06);border:1px solid rgba(232,54,79,0.2)';}
+  document.getElementById('verdictBox').innerHTML=`<div style="background:${bg};border-radius:10px;padding:13px 16px;display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;"><span style="font-size:20px">${icon}</span><div><div style="font-size:14px;font-weight:600;margin-bottom:3px">${title}</div><div style="font-size:13px;color:var(--t2)">${desc}</div></div></div>`;
+
+  document.getElementById('tBody').innerHTML=trades.map(t=>{
+    const bc=t.status==='盈利'?'tw':t.status==='亏损'?'tl':t.status==='持仓中'?'th':'ts';
+    const pv=t.status==='盈利'?`<span class="g">+${t.pct.toFixed(2)}%</span>`:t.status==='亏损'?`<span class="r">${t.pct.toFixed(2)}%</span>`:'—';
+    const nv=t.status==='盈利'?`<span class="g">+$${t.net.toFixed(2)}</span>`:t.status==='亏损'?`<span class="r">-$${Math.abs(t.net).toFixed(2)}</span>`:'—';
+    return `<tr><td class="mono" style="font-weight:600">${t.sym}</td><td class="mono">${t.bp>0?'$'+t.bp.toFixed(2):'—'}</td><td class="mono">${t.bq>0?t.bq:'—'}</td><td class="mono">${t.sp>0?'$'+t.sp.toFixed(2):'—'}</td><td class="mono">${t.sq>0?t.sq:'—'}</td><td class="mono">${pv}</td><td class="mono">${nv}</td><td><span class="tbadge ${bc}">${t.status}</span></td></tr>`;
+  }).join('');
+
+  const res=document.getElementById('results');
+  res.classList.add('on');
+  res.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function saveToHistory() {
+  if(!lastResult) return;
+
+  // 未登录：提示登录
+  if(!currentUser) {
+    openAuth();
+    return;
+  }
+
+  // 免费限制检查
+  if(D.length >= FREE_LIMIT) {
+    if(!confirm(`免费版最多保存 ${FREE_LIMIT} 条历史记录。\n\n是否删除最旧的一条，继续保存？`)) return;
+    const oldest = D[0];
+    await deleteFromCloud(oldest.id);
+    D.shift();
+  }
+
+  const note=prompt('备注（可选，回车跳过）：','')??'';
+  const rec={...lastResult,备注:note};
+  const cloudId=await saveToCloud(rec);
+  D.push({id:cloudId||Date.now(),...rec});
+  localSave();
+  drawAll();
+  const b=document.getElementById('saveBtn');
+  if(b){b.textContent='✓ 已保存';b.style.background='var(--green2)';setTimeout(()=>{b.textContent='💾 保存到历史';b.style.background='';},2500);}
+}
+
+function resetUpload(){
+  document.getElementById('results').classList.remove('on');
+  document.getElementById('fi').value='';
+  lastResult=null;
+}
+
+function downloadTemplate(){
+  const headers=['股票','买入价','买入数量','买入费用','卖出价','卖出数量','卖出费用'];
+  const examples=[['TSM',363.93,3,0.35,380.00,5,0.35],['HOOD',78.67,5,0.70,82.02,15,0.70],['IDR',35.00,5,0.35,28.00,10,0.35],['GDX',106.00,3,0.35,'','',''],['ROBO',73.60,5,'','','','']];
+  const ws=XLSX.utils.aoa_to_sheet([headers,...examples]);
+  ws['!cols']=[10,10,12,10,10,12,10].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'交易记录');
+  XLSX.writeFile(wb,'胜率WinRate_交易模板.xlsx');
+}
+
+// ── HISTORY ───────────────────────────────────────────
+function drawSnaps(){
+  const el=document.getElementById('snapList'); if(!el) return;
+  if(!D.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">🗂</div><div class="empty-t">暂无记录</div><div class="empty-d">上传分析后保存，或点击「手动添加」。</div></div>`;
+    return;
+  }
+
+  // free limit bar
+  const limitHTML = !currentUser
+    ? `<div class="limit-bar"><span class="limit-bar-txt">📌 <strong>登录后</strong>数据同步云端，换设备也能看</span><button class="btn-g" style="font-size:12px;padding:6px 14px;" onclick="openAuth()">登录</button></div>`
+    : D.length>=FREE_LIMIT
+    ? `<div class="limit-bar"><span class="limit-bar-txt">⚠️ 已达免费上限 <strong>${FREE_LIMIT} 条</strong>，保存新记录时会自动删除最旧一条</span></div>`
+    : `<div style="font-size:12px;color:var(--t3);margin-bottom:12px;">已保存 ${D.length} / ${FREE_LIMIT} 条（免费版）</div>`;
+
+  el.innerHTML=limitHTML+`<div class="snap-list">${[...D].reverse().map(s=>{
+    const sc=score(s), idx=D.indexOf(s), prev=idx>0?D[idx-1]:null;
+    const ds=prev?sc-score(prev):null;
+    const sc_c=sc>=70?'var(--green)':sc>=50?'var(--yellow)':'var(--red)';
+    const dh=ds!=null?`<span class="snap-d ${ds>=0?'dg':'dr'}">${ds>=0?'+':''}${ds}</span>`:`<span style="font-size:11px;color:var(--t3)">首次</span>`;
+    return `<div class="snap">
+      <div class="snap-date">${s.date}</div>
+      <div class="snap-score" style="color:${sc_c}">${sc}</div>
+      <div class="snap-stats">
+        <div class="snap-stat">胜率 <span>${s.胜率}%</span></div>
+        <div class="snap-stat">盈亏比 <span>${s.盈亏比}</span></div>
+        <div class="snap-stat">期望值 <span>${s.期望值>0?'+':''}${s.期望值}%</span></div>
+        <div class="snap-stat">笔数 <span>${s.笔数||'—'}</span></div>
+        ${s.备注?`<div class="snap-stat" style="color:var(--t3)">${s.备注}</div>`:''}
+      </div>
+      ${dh}
+      <button class="snap-del" onclick="delSnap('${s.id}')">✕</button>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function toggleForm(){
+  const f=document.getElementById('addForm');
+  const open=f.style.display!=='none';
+  f.style.display=open?'none':'block';
+  if(!open){const d=document.getElementById('f-date');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);}
+}
+
+async function addManual(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const 胜率=parseFloat(g('f-wr')), 盈亏比=parseFloat(g('f-pl')), 期望值=parseFloat(g('f-ex'));
+  const date=g('f-date');
+  if(!date||isNaN(胜率)||isNaN(盈亏比)||isNaN(期望值)){alert('请至少填写：日期、胜率、盈亏比、期望值');return;}
+
+  if(!currentUser){openAuth();return;}
+  if(D.length>=FREE_LIMIT){
+    if(!confirm(`免费版最多保存 ${FREE_LIMIT} 条。是否删除最旧一条继续？`))return;
+    await deleteFromCloud(D[0].id); D.shift();
+  }
+
+  const rec={date,胜率,盈亏比,期望值,笔数:parseInt(g('f-tr'))||0,均盈:parseFloat(g('f-aw'))||0,均亏:parseFloat(g('f-al'))||0,备注:g('f-note')};
+  const cloudId=await saveToCloud(rec);
+  D.push({id:cloudId||Date.now(),...rec});
+  localSave(); drawAll(); toggleForm();
+  ['f-date','f-wr','f-pl','f-ex','f-tr','f-aw','f-al','f-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+
+async function delSnap(id){
+  if(!confirm('确认删除？'))return;
+  await deleteFromCloud(id);
+  D=D.filter(d=>String(d.id)!==String(id));
+  localSave(); drawAll();
+}
+
+// ── INIT ──────────────────────────────────────────────
+window.addEventListener('resize',()=>setTimeout(drawAll,100));
+initAuth();
+</script>
+<!-- ═══ FOOTER ═══ -->
+<div class="copyright-bar">
+  © 2025 胜率 WinRate &nbsp;·&nbsp; 保留所有权利 &nbsp;·&nbsp; 未经授权禁止转载或复制
+</div>
+
+<script>
+/* ── COPYRIGHT PROTECTION ──────────────────────────────────
+ * © 2025 胜率 WinRate. All Rights Reserved.
+ * Unauthorized copying, reproduction, or redistribution
+ * of this software, in whole or in part, is strictly prohibited.
+ * ─────────────────────────────────────────────────────────── */
+
+(function() {
+  'use strict';
+
+  // 1. 禁止右键菜单
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+  });
+
+  // 2. 禁止常用复制/保存快捷键
+  document.addEventListener('keydown', function(e) {
+    const blocked = (
+      // Ctrl/Cmd + S (保存), U (查看源码), A (全选)
+      (e.ctrlKey || e.metaKey) && ['s','u','a'].includes(e.key.toLowerCase())
+    );
+    if (blocked) {
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  // 3. 禁止文字选中（UI 外的正文区域）
+  document.addEventListener('selectstart', function(e) {
+    // 允许 input / textarea 内部选中
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
+  // 4. DevTools 检测 — 打开时提示版权警告
+  let devOpen = false;
+  const threshold = 160;
+  setInterval(function() {
+    const widthDiff  = window.outerWidth  - window.innerWidth  > threshold;
+    const heightDiff = window.outerHeight - window.innerHeight > threshold;
+    if ((widthDiff || heightDiff) && !devOpen) {
+      devOpen = true;
+      console.log(
+        '%c⚠ 版权声明',
+        'color:#e8364f;font-size:20px;font-weight:bold;'
+      );
+      console.log(
+        '%c© 2025 胜率 WinRate. All Rights Reserved.\n本产品代码受著作权法保护，禁止未经授权复制、修改或分发。',
+        'color:#5e6880;font-size:13px;line-height:1.8;'
+      );
+    }
+    if (!widthDiff && !heightDiff) devOpen = false;
+  }, 1000);
+
+  // 5. 在 console 打印版权水印（防止直接 copy-paste 代码后无声使用）
+  console.log(
+    '%c胜率 WinRate',
+    'color:#00b96b;font-size:24px;font-weight:800;font-family:sans-serif;'
+  );
+  console.log(
+    '%c© 2025 All Rights Reserved. Unauthorized use is prohibited.',
+    'color:#aab0c4;font-size:12px;'
+  );
+
+})();
+</script>
+</body>
+</html>
