@@ -2405,10 +2405,10 @@ function parseCSV(txt){
   // ── IBKR multi-section format detector ──
   // IBKR exports have rows like: "Transactions,Header,日期,账户,说明,..."
   // We find the Transactions header row and only parse those data rows.
-  const IBKR_SECTION_KEYWORDS = ['transactions','交易明细','transaction'];
+  const IBKR_SECTION_KEYWORDS = ['transactions','交易明细','transaction','transaction history'];
   const isIBKRExport = lines.slice(0,10).some(l => {
     const first = l.split(',')[0].replace(/"/g,'').trim().toLowerCase();
-    return ['statement','总结','transactions','交易明细'].includes(first);
+    return ['statement','总结','transactions','交易明细','transaction history'].includes(first);
   });
 
   if (isIBKRExport) {
@@ -2468,10 +2468,10 @@ function parseCSV(txt){
 // ── IBKR Excel sheet parser (same logic as CSV version) ──
 function parseIBKRSheet(arr) {
   if (!arr.length) return [];
-  const IBKR_SECTION_KEYWORDS = ['transactions','交易明细','transaction'];
+  const IBKR_SECTION_KEYWORDS = ['transactions','交易明细','transaction','transaction history'];
   const isIBKR = arr.slice(0,10).some(row => {
     const first = String(row[0]||'').trim().toLowerCase();
-    return ['statement','总结','transactions','交易明细'].includes(first);
+    return ['statement','总结','transactions','交易明细','transaction history'].includes(first);
   });
   if (!isIBKR) {
     // Standard sheet: first row is headers
