@@ -2542,9 +2542,14 @@ function detectFormat(rows) {
   const s = rows[0];
   const keys = Object.keys(s).map(k => k.trim().toLowerCase());
   // IBKR raw: has 交易类型 / type column with 买/卖 values
-  const hasType = keys.some(k => ['交易类型','type','side','action','方向'].includes(k));
+  const hasType = keys.some(k => ['交易类型','type','side','action','方向','买卖'].includes(k));
   const hasBuyPrice = keys.some(k => ['买入价','buy_price','buyprice'].includes(k));
-  return hasType && !hasBuyPrice ? 'ibkr' : 'paired';
+  // Also detect IBKR by presence of 代码+价格+数量 together (post-parsed IBKR sheet)
+  const hasCode  = keys.some(k => ['代码','symbol','ticker','stock','code'].includes(k));
+  const hasPrice = keys.some(k => ['价格','price','成交价','均价'].includes(k));
+  const hasQty   = keys.some(k => ['数量','qty','quantity','shares'].includes(k));
+  const isIBKRByColumns = hasCode && hasPrice && hasQty && !hasBuyPrice;
+  return (hasType || isIBKRByColumns) && !hasBuyPrice ? 'ibkr' : 'paired';
 }
 
 async function analyze(rows) {
