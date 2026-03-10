@@ -585,6 +585,7 @@ tbody tr:hover { background:var(--bg); }
     <div class="sec-info">
       <div class="sec-title" id="secAbilityTitle">交易能力</div>
       <div class="sec-desc" id="abilityMeta">基于历史记录最新数据</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px;" id="abilityScope">仅统计已完成买卖配对的交易，持仓中未结算记录不计入</div>
     </div>
     <button id="shareCardBtn" onclick="generateShareCard()" style="display:none;margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
       <span>📤</span> <span id="shareCardBtnTxt">生成长图</span>
@@ -1155,11 +1156,11 @@ function drawKPI() {
 // ── INSIGHT ───────────────────────────────────────────
 function buildAttributionLocked(isEn, sysEx, sysWr, sysPl) {
   if (!lastTrades || !lastTrades.length) return '';
-  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损' || t.status==='盈利(持仓)' || t.status==='亏损(持仓)');
+  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损');
   if (!done.length) return '';
 
-  const wins   = done.filter(t => t.status==='盈利' || t.status==='盈利(持仓)');
-  const losses = done.filter(t => t.status==='亏损' || t.status==='亏损(持仓)');
+  const wins   = done.filter(t => t.status==='盈利');
+  const losses = done.filter(t => t.status==='亏损');
 
   // Derive root cause TITLE only (no body)
   let causeTitle = '';
@@ -1492,11 +1493,11 @@ function openUpgradeModal() {
 
 function buildAttribution(isEn, sysEx, sysWr, sysPl) {
   if (!lastTrades || !lastTrades.length) return '';
-  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损' || t.status==='盈利(持仓)' || t.status==='亏损(持仓)');
+  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损');
   if (!done.length) return '';
 
-  const wins   = done.filter(t => t.status==='盈利' || t.status==='盈利(持仓)').sort((a,b) => b.pct - a.pct);
-  const losses = done.filter(t => t.status==='亏损' || t.status==='亏损(持仓)').sort((a,b) => a.pct - b.pct);
+  const wins   = done.filter(t => t.status==='盈利').sort((a,b) => b.pct - a.pct);
+  const losses = done.filter(t => t.status==='亏损').sort((a,b) => a.pct - b.pct);
   const avgWin  = wins.length  ? wins.reduce((s,t)=>s+t.pct,0)/wins.length   : 0;
   const avgLoss = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.pct,0)/losses.length) : 0;
   const avgNet  = done.length   ? done.reduce((s,t)=>s+Math.abs(t.net),0)/done.length : 0;
@@ -1512,8 +1513,7 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
 
   // For "biggest drag" in summary: split open vs closed
   const worstClosed = closedLoss.length ? [...closedLoss].sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))[0] : null;
-  const worstOpen   = losses.filter(t=>t.isOpen).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))[0] || null;
-  const worstTrade  = worstClosed || worstOpen;
+  const worstTrade  = worstClosed;
 
   // ── single root cause — based on CLOSED trades only ──
 
@@ -1662,7 +1662,7 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
 
       <!-- RIGHT: summary stats -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'📊 SUMMARY (incl. open positions)':'📊 本批次总结（含持仓浮动）'}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'📊 SUMMARY (closed trades)':'📊 本批次总结（已完结）'}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
           <div style="background:rgba(0,185,107,0.05);border:1px solid rgba(0,185,107,0.15);border-radius:10px;padding:12px;text-align:center;">
             <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">✅ ${isEn?'WINNERS':'盈利'}</div>
@@ -1677,21 +1677,12 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
         </div>
         ${worstClosed ? `
         <div style="background:rgba(232,54,79,0.04);border:1px solid rgba(232,54,79,0.15);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
-          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">⚠️ ${isEn?'BIGGEST CLOSED LOSS':'已完结最大拖累'}</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">⚠️ ${isEn?'BIGGEST DRAG':'最大拖累'}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstClosed.sym}</span>
             <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--red);">${worstClosed.pct.toFixed(2)}%</span>
           </div>
           <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Net loss: -$${Math.abs(worstClosed.net).toFixed(2)}`:`净亏损：-$${Math.abs(worstClosed.net).toFixed(2)}`}</div>
-        </div>` : ''}
-        ${worstOpen ? `
-        <div style="background:rgba(217,119,6,0.04);border:1px solid rgba(217,119,6,0.15);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
-          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">📍 ${isEn?'BIGGEST OPEN LOSS (unrealized)':'持仓最大浮亏（未实现）'}</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstOpen.sym}</span>
-            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--yellow);">${worstOpen.pct.toFixed(2)}%</span>
-          </div>
-          <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Unrealized: -$${Math.abs(worstOpen.net).toFixed(2)}`:`浮亏：-$${Math.abs(worstOpen.net).toFixed(2)}`}</div>
         </div>` : ''}
         <div style="font-size:11px;color:var(--t3);margin-top:4px;text-align:right;">
           ${isEn?'Per-symbol breakdown ↓ below':'个股详细分析见下方 ↓'}
@@ -1893,7 +1884,7 @@ function drawLine() {
 
 // ── PNL SECTION ───────────────────────────────────────
 function buildSymbolAnalysis(trades, isEn) {
-  const done = trades.filter(t => t.status==='盈利'||t.status==='亏损'||t.status==='盈利(持仓)'||t.status==='亏损(持仓)');
+  const done = trades.filter(t => t.status==='盈利'||t.status==='亏损');
   if (!done.length) return '';
 
   // Group by symbol
@@ -1905,8 +1896,8 @@ function buildSymbolAnalysis(trades, isEn) {
 
   // Compute per-symbol stats
   const symStats = Object.entries(bySymbol).map(([sym, ts]) => {
-    const wins = ts.filter(t => t.status==='盈利'||t.status==='盈利(持仓)');
-    const losses = ts.filter(t => t.status==='亏损'||t.status==='亏损(持仓)');
+    const wins = ts.filter(t => t.status==='盈利');
+    const losses = ts.filter(t => t.status==='亏损');
     const wr = ts.length ? wins.length/ts.length*100 : 0;
     const avgWin = wins.length ? wins.reduce((s,t)=>s+t.pct,0)/wins.length : 0;
     const avgLoss = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.pct,0)/losses.length) : 0;
@@ -2039,10 +2030,10 @@ function drawPnl() {
     return;
   }
   const isEn = lang === 'en';
-  const done=lastTrades.filter(t=>t.status==='盈利'||t.status==='亏损'||t.status==='盈利(持仓)'||t.status==='亏损(持仓)');
-  const wins=done.filter(t=>t.status==='盈利'||t.status==='盈利(持仓)');
-  const loss=done.filter(t=>t.status==='亏损'||t.status==='亏损(持仓)');
-  const hold=lastTrades.filter(t=>t.status==='持仓中');
+  const done=lastTrades.filter(t=>t.status==='盈利'||t.status==='亏损');
+  const wins=done.filter(t=>t.status==='盈利');
+  const loss=done.filter(t=>t.status==='亏损');
+  const hold=lastTrades.filter(t=>t.isOpen||t.status==='持仓中');
   const tNet=done.reduce((s,t)=>s+t.net,0);
   const tCost=done.reduce((s,t)=>s+t.bp*t.qty,0);
   const tPct=tCost>0?tNet/tCost*100:0;
@@ -2051,14 +2042,17 @@ function drawPnl() {
   const tFee=done.reduce((s,t)=>s+t.fee,0);
   const winRate=done.length?wins.length/done.length*100:0;
   const meta=document.getElementById('pnlMeta');
-  const openCount = done.filter(t=>t.status==='盈利(持仓)'||t.status==='亏损(持仓)').length;
-  if(meta) meta.textContent=`已完成 ${done.length-openCount} 笔 · 持仓浮动 ${openCount} 笔 · 价格待出场 ${hold.length} 笔`;
+  if(meta) meta.textContent=`已完结 ${done.length} 笔 · 持仓中 ${hold.length} 笔（不计入指标）`;
   const nc=tNet>=0?'var(--green)':'var(--red)';
   const fm=v=>{const a=Math.abs(v);return(v>=0?'+':'-')+'$'+(a>=10000?(a/1000).toFixed(1)+'k':a.toFixed(2));};
   const fp=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
-  const openNote = openCount>0 ? `<div style="font-size:11px;color:var(--t3);margin-bottom:10px;padding:6px 10px;background:rgba(217,119,6,0.06);border-radius:6px;border-left:3px solid var(--yellow);">📍 含 ${openCount} 笔持仓浮动盈亏，随行情变动</div>` : '';
+  const holdNote = hold.length>0 ? `
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;padding:10px 14px;background:rgba(99,102,241,0.04);border-radius:8px;border-left:3px solid rgba(99,102,241,0.3);line-height:1.7;">
+      📌 <strong>${isEn?`${hold.length} open positions excluded from all metrics`:`${hold.length} 笔持仓未计入任何指标`}</strong><br>
+      <span style="color:var(--t3);">${isEn?'Open positions have uncertain outcomes — including them would distort your system assessment. Only closed trades reflect your actual trading ability.':'持仓未出场，方向不明确，纳入统计会导致结论失真。胜率、盈亏比、期望值均只基于已完结交易，这样才能准确回测你的交易能力。'}</span>
+    </div>` : '';
   sec.innerHTML=`
-    ${openNote}
+    ${holdNote}
     <div class="g3" style="margin-bottom:14px;">
       <div class="pnl-card"><div class="pnl-lbl">总净盈亏</div><div class="pnl-val" style="color:${nc}">${fm(tNet)}</div><div class="pnl-note">总盈亏率 <strong style="font-family:'DM Mono',monospace;color:${nc}">${fp(tPct)}</strong></div></div>
       <div class="pnl-card"><div class="pnl-lbl">盈利交易</div><div class="pnl-val" style="color:var(--green)">${fm(wNet)}</div><div class="pnl-note">${wins.length} 笔 · 胜率 <strong style="font-family:'DM Mono',monospace;color:var(--green)">${winRate.toFixed(1)}%</strong></div></div>
@@ -2070,9 +2064,9 @@ function drawPnl() {
       <div class="tbl-wrap"><table>
         <thead><tr><th>股票</th><th>买入价</th><th>买入数量</th><th>卖出价</th><th>卖出数量</th><th>盈亏%</th><th>净盈亏</th><th>状态</th></tr></thead>
         <tbody>${lastTrades.map(t=>{
-          const bc=t.status.includes('盈利')?'tw':t.status.includes('亏损')?'tl':t.status==='持仓中'?'th':'ts';
-          const pv=t.status.includes('盈利')?`<span class="g">+${t.pct.toFixed(2)}%${t.isOpen?' 📍':''}</span>`:t.status.includes('亏损')?`<span class="r">${t.pct.toFixed(2)}%${t.isOpen?' 📍':''}</span>`:'—';
-          const nv=t.status.includes('盈利')?`<span class="g">+$${t.net.toFixed(2)}</span>`:t.status.includes('亏损')?`<span class="r">-$${Math.abs(t.net).toFixed(2)}</span>`:'—';
+          const bc=t.status==='盈利'?'tw':t.status==='亏损'?'tl':t.isOpen||t.status==='持仓中'?'th':'ts';
+          const pv=t.status==='盈利'?`<span class="g">+${t.pct.toFixed(2)}%</span>`:t.status==='亏损'?`<span class="r">${t.pct.toFixed(2)}%</span>`:(t.isOpen&&t.pct!==0?`<span style="color:var(--t3)">${t.pct>0?'+':''}${t.pct.toFixed(2)}% 📍</span>`:'—');
+          const nv=t.status==='盈利'?`<span class="g">+$${t.net.toFixed(2)}</span>`:t.status==='亏损'?`<span class="r">-$${Math.abs(t.net).toFixed(2)}</span>`:(t.isOpen&&t.net!==0?`<span style="color:var(--t3)">${t.net>0?'+':'-'}$${Math.abs(t.net).toFixed(2)} 📍</span>`:'—');
           const spDisplay = t.sp>0?'$'+t.sp.toFixed(2)+(t.isOpen?' (现价)':''):'—';
           return `<tr><td class="mono" style="font-weight:600">${t.sym}</td><td class="mono">${t.bp>0?'$'+t.bp.toFixed(2):'—'}</td><td class="mono">${t.bq>0?t.bq:'—'}</td><td class="mono">${spDisplay}</td><td class="mono">${t.sq>0?t.sq:'—'}</td><td class="mono">${pv}</td><td class="mono">${nv}</td><td><span class="tbadge ${bc}">${t.status}</span></td></tr>`;
         }).join('')}</tbody>
@@ -2424,9 +2418,9 @@ function dismissManualPriceUI() {
 
 // ── shared result renderer ────────────────────────────
 function renderResults(trades) {
-  const done = trades.filter(t => t.status==='盈利'||t.status==='亏损'||t.status==='盈利(持仓)'||t.status==='亏损(持仓)');
-  const wins = done.filter(t => t.status==='盈利'||t.status==='盈利(持仓)');
-  const loss = done.filter(t => t.status==='亏损'||t.status==='亏损(持仓)');
+  const done = trades.filter(t => t.status==='盈利'||t.status==='亏损');
+  const wins = done.filter(t => t.status==='盈利');
+  const loss = done.filter(t => t.status==='亏损');
   const 胜率 = done.length ? wins.length/done.length*100 : 0;
   const 均盈 = wins.length ? wins.reduce((s,t)=>s+t.pct,0)/wins.length : 0;
   const 均亏 = loss.length ? Math.abs(loss.reduce((s,t)=>s+t.pct,0)/loss.length) : 0;
@@ -2743,6 +2737,10 @@ function applyLang() {
   // ability meta (only if no data loaded yet)
   const am = document.getElementById('abilityMeta');
   if (am && !D.length) am.textContent = L.sec_ability_desc;
+  const asc = document.getElementById('abilityScope');
+  if (asc) asc.textContent = lang==='en'
+    ? 'Only completed buy+sell pairs counted — open positions excluded'
+    : '仅统计已完成买卖配对的交易，持仓中未结算记录不计入';
   const pm = document.getElementById('pnlMeta');
   if (pm) pm.textContent = L.sec_pnl_desc;
   // chart labels
