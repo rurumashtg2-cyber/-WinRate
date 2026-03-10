@@ -327,7 +327,7 @@ tbody tr:hover { background:var(--bg); }
   z-index: 0;
 }
 .hero-inner { padding: 36px 48px 52px; max-width: 1100px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.hero-left { flex: 1; min-width: 0; }
+.hero-left { flex: 1; min-width: 0; max-width: 600px; }
 .hero-tag {
   display: inline-flex; align-items: center; gap: 6px;
   background: rgba(0,185,107,0.1); border: 1px solid rgba(0,185,107,0.25);
@@ -666,12 +666,50 @@ tbody tr:hover { background:var(--bg); }
       </div>
     </div>
 
+    <div class="hero-slide" data-slide="2">
+      <div class="hero-slide-inner">
+        <div class="hero-left" style="max-width:480px;">
+          <div class="hero-tag" style="background:rgba(168,85,247,0.1);border-color:rgba(168,85,247,0.25);color:#7c3aed;">
+            <span>💡</span> 股票盈亏的3个来源，只有1个能靠自己
+          </div>
+          <div class="hero-title">
+            你的每一笔盈亏，<br>
+            都有<em style="color:#7c3aed;">迹可循</em>
+          </div>
+          <div class="hero-sub">
+            股票收益从来不是随机的——它由三部分构成，但大多数人只看到结果，看不清来源。
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:12px 14px;">
+              <span style="font-size:18px;line-height:1;flex-shrink:0;">📉</span>
+              <div><strong style="font-size:13px;color:#b91c1c;">① 大盘波动 β</strong><br><span style="font-size:12px;color:var(--t3);">牛市人人赚钱，熊市人人亏损，跟你没关系</span></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px 14px;">
+              <span style="font-size:18px;line-height:1;flex-shrink:0;">🎲</span>
+              <div><strong style="font-size:13px;color:#b45309;">② 运气与情绪</strong><br><span style="font-size:12px;color:var(--t3);">短期偶然，低位买入高位卖出，不可持续</span></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(0,185,107,0.05);border:1px solid rgba(0,185,107,0.2);border-radius:10px;padding:12px 14px;">
+              <span style="font-size:18px;line-height:1;flex-shrink:0;">🎯</span>
+              <div><strong style="font-size:13px;color:var(--green);">③ 交易能力 α</strong><br><span style="font-size:12px;color:var(--t3);">成熟的认知、体系和纪律——唯一可以学习和提升的部分</span></div>
+            </div>
+          </div>
+          <div class="hero-formula" style="border-color:rgba(168,85,247,0.25);background:rgba(168,85,247,0.06);margin-top:14px;">
+            <strong style="color:#7c3aed;">胜算 WinRate</strong>
+            <span style="color:var(--t3)">→</span>
+            <span>帮你量化第③项，看清自己真正的交易能力</span>
+          </div>
+        </div>
+        <div class="hero-right" style="visibility:hidden;"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- dots -->
   <div class="hero-dots" id="heroDots">
     <span class="hero-dot active" onclick="heroGoTo(0)"></span>
     <span class="hero-dot" onclick="heroGoTo(1)"></span>
+    <span class="hero-dot" onclick="heroGoTo(2)"></span>
   </div>
 </div>
 <div class="page on" id="p-overview">
@@ -3270,6 +3308,25 @@ window.renderNavGuest = function() {
 // init
 applyPanelLang();
 updatePanelAuth();
+
+// ── HERO CAROUSEL ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  const track = document.getElementById('heroTrack');
+  const dots = document.querySelectorAll('.hero-dot');
+  const total = document.querySelectorAll('.hero-slide').length;
+  let cur = 0, timer;
+
+  window.heroGoTo = function(n) {
+    cur = n;
+    track.style.transform = `translateX(-${cur * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+    resetTimer();
+  };
+
+  function next() { heroGoTo((cur + 1) % total); }
+  function resetTimer() { clearInterval(timer); timer = setInterval(next, 4000); }
+  resetTimer();
+});
 </script>
 </body>
 </html>
