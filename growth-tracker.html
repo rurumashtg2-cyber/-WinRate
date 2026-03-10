@@ -568,69 +568,110 @@ tbody tr:hover { background:var(--bg); }
   </div>
 </div>
 
-<!-- ═══ HERO BANNER ═══ -->
-<div class="hero">
-  <!-- candlestick background decoration -->
-  <div class="hero-bg-candles">
-    <svg viewBox="0 0 400 160" preserveAspectRatio="xMaxYMid meet" style="width:100%;height:100%;">
-      <!-- wicks -->
-      <line x1="30" y1="20" x2="30" y2="140" stroke="#00b96b" stroke-width="1.5"/>
-      <line x1="70" y1="30" x2="70" y2="130" stroke="#e8364f" stroke-width="1.5"/>
-      <line x1="110" y1="15" x2="110" y2="120" stroke="#00b96b" stroke-width="1.5"/>
-      <line x1="150" y1="25" x2="150" y2="135" stroke="#00b96b" stroke-width="1.5"/>
-      <line x1="190" y1="40" x2="190" y2="125" stroke="#e8364f" stroke-width="1.5"/>
-      <line x1="230" y1="10" x2="230" y2="110" stroke="#00b96b" stroke-width="1.5"/>
-      <line x1="270" y1="20" x2="270" y2="115" stroke="#00b96b" stroke-width="1.5"/>
-      <line x1="310" y1="30" x2="310" y2="120" stroke="#e8364f" stroke-width="1.5"/>
-      <line x1="350" y1="15" x2="350" y2="105" stroke="#00b96b" stroke-width="1.5"/>
-      <!-- candle bodies -->
-      <rect x="22" y="50" width="16" height="60" rx="2" fill="#00b96b"/>
-      <rect x="62" y="55" width="16" height="55" rx="2" fill="#e8364f"/>
-      <rect x="102" y="40" width="16" height="50" rx="2" fill="#00b96b"/>
-      <rect x="142" y="45" width="16" height="65" rx="2" fill="#00b96b"/>
-      <rect x="182" y="60" width="16" height="45" rx="2" fill="#e8364f"/>
-      <rect x="222" y="30" width="16" height="55" rx="2" fill="#00b96b"/>
-      <rect x="262" y="35" width="16" height="50" rx="2" fill="#00b96b"/>
-      <rect x="302" y="50" width="16" height="45" rx="2" fill="#e8364f"/>
-      <rect x="342" y="25" width="16" height="55" rx="2" fill="#00b96b"/>
-      <!-- trend line -->
-      <polyline points="30,95 70,100 110,70 150,75 190,82 230,55 270,58 310,72 350,48"
-        fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,3" opacity="0.6"/>
-    </svg>
+<!-- ═══ HERO BANNER CAROUSEL ═══ -->
+<div class="hero-carousel" id="heroCarousel">
+  <div class="hero-track" id="heroTrack">
+
+    <!-- SLIDE 1: 期望值 R -->
+    <div class="hero-slide" data-slide="0">
+      <div class="hero-bg-candles">
+        <svg viewBox="0 0 400 160" preserveAspectRatio="xMaxYMid meet" style="width:100%;height:100%;">
+          <line x1="30" y1="20" x2="30" y2="140" stroke="#00b96b" stroke-width="1.5"/>
+          <line x1="70" y1="30" x2="70" y2="130" stroke="#e8364f" stroke-width="1.5"/>
+          <line x1="110" y1="15" x2="110" y2="120" stroke="#00b96b" stroke-width="1.5"/>
+          <line x1="150" y1="25" x2="150" y2="135" stroke="#00b96b" stroke-width="1.5"/>
+          <line x1="190" y1="40" x2="190" y2="125" stroke="#e8364f" stroke-width="1.5"/>
+          <line x1="230" y1="10" x2="230" y2="110" stroke="#00b96b" stroke-width="1.5"/>
+          <line x1="270" y1="20" x2="270" y2="115" stroke="#00b96b" stroke-width="1.5"/>
+          <line x1="310" y1="30" x2="310" y2="120" stroke="#e8364f" stroke-width="1.5"/>
+          <line x1="350" y1="15" x2="350" y2="105" stroke="#00b96b" stroke-width="1.5"/>
+          <rect x="22" y="50" width="16" height="60" rx="2" fill="#00b96b"/>
+          <rect x="62" y="55" width="16" height="55" rx="2" fill="#e8364f"/>
+          <rect x="102" y="40" width="16" height="50" rx="2" fill="#00b96b"/>
+          <rect x="142" y="45" width="16" height="65" rx="2" fill="#00b96b"/>
+          <rect x="182" y="60" width="16" height="45" rx="2" fill="#e8364f"/>
+          <rect x="222" y="30" width="16" height="55" rx="2" fill="#00b96b"/>
+          <rect x="262" y="35" width="16" height="50" rx="2" fill="#00b96b"/>
+          <rect x="302" y="50" width="16" height="45" rx="2" fill="#e8364f"/>
+          <rect x="342" y="25" width="16" height="55" rx="2" fill="#00b96b"/>
+          <polyline points="30,95 70,100 110,70 150,75 190,82 230,55 270,58 310,72 350,48"
+            fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,3" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="hero-slide-inner">
+        <div class="hero-left">
+          <div class="hero-tag"><span>⚡</span> 30秒算出你交易系统的核心指标</div>
+          <div class="hero-title">
+            只盯胜率，是自嗨。<br>
+            真正决定能否活下来的，只有一个数字：<em>期望值 R</em>
+          </div>
+          <div class="hero-sub">
+            期望值 R 直接告诉你这套系统长期是赚钱、打平还是必然亏钱。<br>
+            上传交易记录，立刻看清：是止盈太早拉低了 R？还是风控没做好把 R 拖成负？
+          </div>
+          <div class="hero-formula">
+            <strong>期望值 R</strong>
+            <span style="color:var(--t3)">≈</span>
+            <span id="heroFormulaText">胜率 × 盈亏比 − (1 − 胜率)</span>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="hero-stat">
+            <div class="hero-stat-val" style="color:var(--green)">R &gt; 0</div>
+            <div class="hero-stat-lbl">长期盈利</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" style="color:var(--yellow)">R ≈ 0</div>
+            <div class="hero-stat-lbl">被手续费磨死</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" style="color:var(--red)">R &lt; 0</div>
+            <div class="hero-stat-lbl">长期必亏</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: 痛点 -->
+    <div class="hero-slide" data-slide="1">
+      <div class="hero-slide-inner">
+        <div class="hero-left">
+          <div class="hero-tag" style="background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.25);color:#1d6ae5;">
+            <span>📊</span> 你的收益，到底是你的能力还是运气？
+          </div>
+          <div class="hero-title">
+            股票涨了，是你厉害，<br>
+            还是<em style="color:#1d6ae5;">大盘拉的？</em>
+          </div>
+          <div class="hero-sub">
+            大多数交易者无法区分「市场给的 β」和「自己赚的 α」。<br>
+            涨了觉得自己牛，跌了怪市场不好——这不是交易能力，这是幻觉。
+          </div>
+          <div class="hero-formula" style="border-color:rgba(59,130,246,0.25);background:rgba(59,130,246,0.06);">
+            <strong style="color:#1d6ae5;">不量化自己的交易行为</strong>
+            <span style="color:var(--t3)">→</span>
+            <span>就永远不知道自己是在进步还是原地踏步</span>
+          </div>
+        </div>
+        <div class="hero-right" style="gap:14px;">
+          <div class="hero-stat" style="border-color:rgba(59,130,246,0.2);">
+            <div class="hero-stat-val" style="color:#1d6ae5;font-size:26px;">β</div>
+            <div class="hero-stat-lbl">市场给的<br>你控制不了</div>
+          </div>
+          <div class="hero-stat" style="border-color:rgba(59,130,246,0.2);">
+            <div class="hero-stat-val" style="color:var(--green);font-size:26px;">α</div>
+            <div class="hero-stat-lbl">自己赚的<br>可以学习提升</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-  <div class="hero-slide-inner">
-  <div class="hero-left">
-    <div class="hero-tag">
-      <span>⚡</span> 30秒算出你交易系统的核心指标
-    </div>
-    <div class="hero-title">
-      只盯胜率，是自嗨。<br>
-      真正决定能否活下来的，只有一个数字：<em>期望值 R</em>
-    </div>
-    <div class="hero-sub">
-      期望值 R 直接告诉你这套系统长期是赚钱、打平还是必然亏钱。<br>
-      上传交易记录，立刻看清：是止盈太早拉低了 R？还是风控没做好把 R 拖成负？
-    </div>
-    <div class="hero-formula">
-      <strong>期望值 R</strong>
-      <span style="color:var(--t3)">≈</span>
-      <span id="heroFormulaText">胜率 × 盈亏比 − (1 − 胜率)</span>
-    </div>
-  </div>
-  <div class="hero-right">
-    <div class="hero-stat">
-      <div class="hero-stat-val" style="color:var(--green)">R &gt; 0</div>
-      <div class="hero-stat-lbl">长期盈利</div>
-    </div>
-    <div class="hero-stat">
-      <div class="hero-stat-val" style="color:var(--yellow)">R ≈ 0</div>
-      <div class="hero-stat-lbl">被手续费磨死</div>
-    </div>
-    <div class="hero-stat">
-      <div class="hero-stat-val" style="color:var(--red)">R &lt; 0</div>
-      <div class="hero-stat-lbl">长期必亏</div>
-    </div>
-  </div>
+
+  <!-- dots -->
+  <div class="hero-dots" id="heroDots">
+    <span class="hero-dot active" onclick="heroGoTo(0)"></span>
+    <span class="hero-dot" onclick="heroGoTo(1)"></span>
   </div>
 </div>
 <div class="page on" id="p-overview">
