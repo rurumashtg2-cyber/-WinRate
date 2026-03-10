@@ -1288,81 +1288,80 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
 
     // Case A: one trade dominates net loss
     if (Math.abs(worstByNet.net) > avgNet * 2.2) {
-      // Estimate: if that trade had stopped at -avgLoss%, how much would R improve?
-      const savedPct = Math.abs(worstByNet.pct) - avgLoss;
-      const improvedR = (sysEx + savedPct * (Math.abs(worstByNet.net) / (avgNet * done.length))).toFixed(2);
+      const timesOver = (Math.abs(worstByNet.net) / avgNet).toFixed(1);
       diagnosis = {
         icon: '⚠️', color: '#d97706',
         bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)',
-        title: isEn ? `Root cause: ${worstByNet.sym} position too large` : `根因：${worstByNet.sym} 仓位过重`,
+        title: isEn ? `${worstByNet.sym} wiped out your profits` : `${worstByNet.sym} 抵消了你所有的盈利`,
         body: isEn
-          ? `<strong>${worstByNet.sym}</strong> lost ${worstByNet.pct.toFixed(1)}% and accounts for a disproportionate share of your total loss. If this one trade had been stopped at your avg loss level (−${avgLoss.toFixed(1)}%), your Expectancy R would improve to approximately <strong>+${improvedR}%</strong>. → Cap any single position risk to <strong>≤2% of portfolio</strong> before entering.`
-          : `<strong>${worstByNet.sym}</strong> 亏损 ${worstByNet.pct.toFixed(1)}%，占总亏损比例过大。如果这笔在均亏水位（−${avgLoss.toFixed(1)}%）止损，期望值 R 预计可改善至约 <strong>+${improvedR}%</strong>。→ 进场前将单笔风险控制在总仓位的 <strong>2% 以内</strong>。`
+          ? `<strong>${worstByNet.sym}</strong> lost <strong>${Math.abs(worstByNet.pct).toFixed(1)}%</strong>, which is ${timesOver}× your average trade size. Your other trades were fine — this one trade is the whole problem.<br><br>→ <strong>Before your next trade:</strong> decide the exact price you'll sell if it goes wrong, and write it down before you buy.`
+          : `<strong>${worstByNet.sym}</strong> 亏了 <strong>${Math.abs(worstByNet.pct).toFixed(1)}%</strong>，是其他交易平均亏损的 ${timesOver} 倍。你其他的交易没问题，就是这一笔拖垮了整体。<br><br>→ <strong>下次进场前：</strong>先写下「跌到多少价格我就出」，写下来再买，不要买了再想。`
       };
     }
     // Case B: P/L ratio is the killer (losses too big vs wins)
     else if (sysPl < 1.0) {
-      const targetLoss = (avgWin / 1.5).toFixed(1);
+      const worstSym = losses[0].sym;
+      const worstPct = Math.abs(losses[0].pct).toFixed(1);
       diagnosis = {
         icon: '🔴', color: 'var(--red)',
         bg: 'rgba(232,54,79,0.06)', border: 'rgba(232,54,79,0.18)',
-        title: isEn ? 'Root cause: losses are bigger than wins' : '根因：每次亏损超过每次盈利',
+        title: isEn ? 'Your losses are bigger than your wins' : '你亏钱的幅度比赚钱的幅度大',
         body: isEn
-          ? `Your avg win is <strong>${avgWin.toFixed(1)}%</strong> but avg loss is <strong>${avgLoss.toFixed(1)}%</strong> — each loss wipes out more than one win. To reach a healthy P/L ratio of 1.5, you need to cut losses before they exceed <strong>−${targetLoss}%</strong>. → Set a hard stop at entry, not after the trade moves against you.`
-          : `均盈 <strong>${avgWin.toFixed(1)}%</strong>，均亏 <strong>${avgLoss.toFixed(1)}%</strong>，每次亏损超过一次盈利的价值。要达到健康的盈亏比 1.5，需将每笔亏损控制在 <strong>−${targetLoss}%</strong> 以内。→ 进场时预设止损单，不要等亏损扩大后才行动。`
+          ? `You're winning <strong>${avgWin.toFixed(1)}%</strong> when right, but losing <strong>${avgLoss.toFixed(1)}%</strong> when wrong. One loss cancels out more than one win — that's why you're losing money overall even with a decent win rate.<br><br>→ <strong>Next trade:</strong> set your stop-loss before you enter. If you're aiming to make 5%, get out if it drops 3–4%. Don't let a small loss turn into ${worstPct}%.`
+          : `你赚钱时平均赚 <strong>${avgWin.toFixed(1)}%</strong>，亏钱时平均亏 <strong>${avgLoss.toFixed(1)}%</strong>。一笔亏损能抵消掉不止一笔盈利——这就是为什么即使胜率不差，总账还是亏的。<br><br>→ <strong>下次进场前：</strong>先设好止损。打算赚 5% 的交易，最多亏 3–4% 就出，别让小亏变成像 ${worstSym} 那样的 ${worstPct}%。`
       };
     }
     // Case C: win rate is the killer
     else if (sysWr < 45) {
+      const lossCount = losses.length;
+      const winCount = wins.length;
       diagnosis = {
         icon: '🔴', color: 'var(--red)',
         bg: 'rgba(232,54,79,0.06)', border: 'rgba(232,54,79,0.18)',
-        title: isEn ? 'Root cause: too many losing trades' : '根因：亏损交易笔数太多',
+        title: isEn ? 'You\'re losing more trades than you\'re winning' : '你亏损的次数比盈利的次数多',
         body: isEn
-          ? `Only <strong>${wins.length} of ${done.length}</strong> trades are profitable (${sysWr.toFixed(0)}% win rate). The volume of losses is overwhelming your gains. → Review your entry signal — are you entering too early, or chasing moves? Reduce trade frequency and wait for higher-conviction setups.`
-          : `${done.length} 笔交易中只有 <strong>${wins.length} 笔盈利</strong>（胜率 ${sysWr.toFixed(0)}%），亏损笔数压垮了盈利。→ 回顾入场信号——是否入场太早或追涨？建议减少交易频率，只做高确定性机会。`
+          ? `Out of <strong>${done.length} trades</strong>, only <strong>${winCount} made money</strong> and <strong>${lossCount} lost</strong>. The problem isn't how much you make or lose per trade — it's that you're entering too many bad trades.<br><br>→ <strong>This week:</strong> before entering any trade, ask yourself "would I be comfortable holding this overnight?" If the answer is no, skip it.`
+          : `<strong>${done.length} 笔交易</strong>里，只有 <strong>${winCount} 笔赚钱</strong>，<strong>${lossCount} 笔亏钱</strong>。问题不在于每笔赚多少亏多少，而是进场的次数太多、质量太低。<br><br>→ <strong>本周开始：</strong>每次想进场时先问自己「这笔我有把握吗？」没把握就不进，宁可少做，不要乱做。`
       };
     }
-    // Case D: all three are slightly off — general negative expectancy
+    // Case D: general negative expectancy
     else {
-      const neededWr = (50 + (avgLoss / (avgWin + avgLoss)) * 100).toFixed(0);
       diagnosis = {
         icon: '🔴', color: 'var(--red)',
         bg: 'rgba(232,54,79,0.06)', border: 'rgba(232,54,79,0.18)',
-        title: isEn ? 'Root cause: wins don\'t offset losses' : '根因：盈利不足以覆盖亏损',
+        title: isEn ? 'Your wins aren\'t covering your losses' : '你赚的不够覆盖亏的',
         body: isEn
-          ? `With your current avg win (${avgWin.toFixed(1)}%) and avg loss (${avgLoss.toFixed(1)}%), you need a win rate of at least <strong>${neededWr}%</strong> to break even. You're at ${sysWr.toFixed(0)}%. → Either widen your take-profit targets to increase avg win, or tighten stop-loss to reduce avg loss.`
-          : `按你目前的均盈（${avgWin.toFixed(1)}%）和均亏（${avgLoss.toFixed(1)}%），需要胜率达到至少 <strong>${neededWr}%</strong> 才能保本，你目前是 ${sysWr.toFixed(0)}%。→ 拓宽止盈目标提高均盈，或收紧止损降低均亏，二选其一。`
+          ? `Win rate is OK at <strong>${sysWr.toFixed(0)}%</strong>, but your avg loss (<strong>${avgLoss.toFixed(1)}%</strong>) is too close to your avg win (<strong>${avgWin.toFixed(1)}%</strong>). You need your winners to be meaningfully bigger than your losers.<br><br>→ <strong>Pick one:</strong> either hold your winners longer before selling (let them run past ${(avgWin * 1.5).toFixed(1)}%), or cut your losers faster (exit before they hit ${(avgLoss * 0.7).toFixed(1)}%). Don't try to do both at once.`
+          : `胜率 <strong>${sysWr.toFixed(0)}%</strong> 还可以，但均亏（<strong>${avgLoss.toFixed(1)}%</strong>）跟均盈（<strong>${avgWin.toFixed(1)}%</strong>）差距太小，赚的不比亏的多多少。<br><br>→ <strong>选一件事做：</strong>要么盈利时多拿一会儿再走（目标超过 ${(avgWin * 1.5).toFixed(1)}%），要么亏损时更快止损（跌到 ${(avgLoss * 0.7).toFixed(1)}% 就出）。先改一个，别同时改两个。`
       };
     }
   } else if (sysEx > 0) {
-    // Positive system — find the real strength
     if (sysWr >= 60 && sysPl >= 2.0) {
       diagnosis = {
         icon: '✅', color: 'var(--green)',
         bg: 'rgba(0,185,107,0.05)', border: 'rgba(0,185,107,0.18)',
-        title: isEn ? 'Strong system — protect it' : '系统健康，保护优势',
+        title: isEn ? 'Your system is working — don\'t break it' : '系统运作良好，别乱动它',
         body: isEn
-          ? `Both win rate (${sysWr.toFixed(0)}%) and P/L ratio (${sysPl.toFixed(2)}) are above benchmark. Your edge is real. → Focus on <strong>consistency</strong>: don't increase size until you have 20+ trades at this performance level.`
-          : `胜率（${sysWr.toFixed(0)}%）和盈亏比（${sysPl.toFixed(2)}）均达标，系统优势真实存在。→ 专注<strong>一致性执行</strong>：在积累 20 笔以上同等表现后，再考虑加大仓位。`
+          ? `Win rate <strong>${sysWr.toFixed(0)}%</strong>, P/L ratio <strong>${sysPl.toFixed(2)}</strong> — both above the benchmark. You have a real edge.<br><br>→ <strong>The main risk now</strong> is overtrading or changing what's working. Keep doing exactly what you've been doing. Only increase position size after 20+ more trades at this level.`
+          : `胜率 <strong>${sysWr.toFixed(0)}%</strong>，盈亏比 <strong>${sysPl.toFixed(2)}</strong>，两项都达标，你的交易系统有真实的优势。<br><br>→ <strong>现在最大的风险</strong>是过度交易或改变正在奏效的做法。继续按现在的方式执行，再积累 20 笔以上同等表现后，再考虑加仓。`
       };
     } else if (sysPl < 1.5) {
       diagnosis = {
         icon: '🟡', color: 'var(--yellow)',
         bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)',
-        title: isEn ? 'Positive edge — but P/L ratio is the weak link' : '正期望，但盈亏比是短板',
+        title: isEn ? 'You\'re selling winners too early' : '你赚钱的时候跑太早了',
         body: isEn
-          ? `Your win rate carries your system, but P/L ratio ${sysPl.toFixed(2)} is below the 2.0 target. You're leaving money on the table by exiting winners too early. → Try letting your best setups run an extra 20–30% before taking profit.`
-          : `你的胜率支撑着系统，但盈亏比 ${sysPl.toFixed(2)} 低于 2.0 目标，说明盈利被过早兑现。→ 尝试让最佳交易多跑 20–30% 再止盈，让赢家奔跑。`
+          ? `You win <strong>${sysWr.toFixed(0)}%</strong> of your trades — that's solid. But your avg win (<strong>${avgWin.toFixed(1)}%</strong>) isn't much bigger than your avg loss (<strong>${avgLoss.toFixed(1)}%</strong>). You're cutting winners before they've had a chance to run.<br><br>→ <strong>Next winning trade:</strong> when you hit your original target, sell only half. Let the other half run with a trailing stop. See how much further it goes.`
+          : `你 <strong>${sysWr.toFixed(0)}%</strong> 的交易是赚钱的，这很好。但均盈（<strong>${avgWin.toFixed(1)}%</strong>）和均亏（<strong>${avgLoss.toFixed(1)}%</strong>）差距不够大，说明赚钱时走太早了。<br><br>→ <strong>下次盈利时：</strong>涨到你预期目标时，先卖一半，另一半加个移动止损继续拿着，看看能跑多远。`
       };
     } else {
       diagnosis = {
         icon: '🟡', color: 'var(--yellow)',
         bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)',
-        title: isEn ? 'Positive edge — win rate has room to grow' : '正期望，胜率还有提升空间',
+        title: isEn ? 'Good system — win rate is the next unlock' : '系统不错，提高胜率是下一步',
         body: isEn
-          ? `P/L ratio is solid at ${sysPl.toFixed(2)}, but win rate ${sysWr.toFixed(0)}% is below 60%. Each 5% improvement in win rate adds roughly +${(5 * sysPl / 100 * 100).toFixed(1)} pts to your score. → Be more selective at entry; skip trades where the setup isn't clean.`
-          : `盈亏比稳健（${sysPl.toFixed(2)}），但胜率 ${sysWr.toFixed(0)}% 低于 60% 基准。胜率每提升 5%，综合分约增加 ${(5 * sysPl / 100 * 100).toFixed(1)} 分。→ 入场更挑剔，信号不清晰的交易直接跳过。`
+          ? `P/L ratio is strong at <strong>${sysPl.toFixed(2)}</strong> — you manage your exits well. Win rate is <strong>${sysWr.toFixed(0)}%</strong>, just below the 60% benchmark.<br><br>→ <strong>Look at your losing trades:</strong> was there a pattern? Entered too early? Chased a move? Identify the one type of bad entry you make most often, and stop taking that trade.`
+          : `盈亏比 <strong>${sysPl.toFixed(2)}</strong> 很稳，说明你的出场做得不错。胜率 <strong>${sysWr.toFixed(0)}%</strong>，稍低于 60% 基准。<br><br>→ <strong>回看你的亏损交易：</strong>有没有规律？入场太早？追涨追进去的？找出你最常犯的那一类错误入场，以后这类信号直接不做。`
       };
     }
   }
