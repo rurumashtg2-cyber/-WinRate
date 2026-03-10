@@ -668,7 +668,7 @@ tbody tr:hover { background:var(--bg); }
 
     <div class="hero-slide" data-slide="2">
       <div class="hero-slide-inner">
-        <div class="hero-left" style="max-width:480px;">
+        <div class="hero-left">
           <div class="hero-tag" style="background:rgba(168,85,247,0.1);border-color:rgba(168,85,247,0.25);color:#7c3aed;">
             <span>💡</span> 股票盈亏的3个来源，只有1个能靠自己
           </div>
@@ -677,21 +677,7 @@ tbody tr:hover { background:var(--bg); }
             都有<em style="color:#7c3aed;">迹可循</em>
           </div>
           <div class="hero-sub">
-            股票收益从来不是随机的——它由三部分构成，但大多数人只看到结果，看不清来源。
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
-            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:12px 14px;">
-              <span style="font-size:18px;line-height:1;flex-shrink:0;">📉</span>
-              <div><strong style="font-size:13px;color:#b91c1c;">① 大盘波动 β</strong><br><span style="font-size:12px;color:var(--t3);">牛市人人赚钱，熊市人人亏损，跟你没关系</span></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px 14px;">
-              <span style="font-size:18px;line-height:1;flex-shrink:0;">🎲</span>
-              <div><strong style="font-size:13px;color:#b45309;">② 运气与情绪</strong><br><span style="font-size:12px;color:var(--t3);">短期偶然，低位买入高位卖出，不可持续</span></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:12px;background:rgba(0,185,107,0.05);border:1px solid rgba(0,185,107,0.2);border-radius:10px;padding:12px 14px;">
-              <span style="font-size:18px;line-height:1;flex-shrink:0;">🎯</span>
-              <div><strong style="font-size:13px;color:var(--green);">③ 交易能力 α</strong><br><span style="font-size:12px;color:var(--t3);">成熟的认知、体系和纪律——唯一可以学习和提升的部分</span></div>
-            </div>
+            股票收益从来不是随机的——它由三部分构成，但大多数人只看到结果，看不清来源。搞清楚是哪个在起作用，才能真正提升自己。
           </div>
           <div class="hero-formula" style="border-color:rgba(168,85,247,0.25);background:rgba(168,85,247,0.06);margin-top:14px;">
             <strong style="color:#7c3aed;">胜算 WinRate</strong>
@@ -699,17 +685,88 @@ tbody tr:hover { background:var(--bg); }
             <span>帮你量化第③项，看清自己真正的交易能力</span>
           </div>
         </div>
-        <div class="hero-right" style="visibility:hidden;"></div>
+        <div class="hero-right" style="flex-direction:column;gap:10px;">
+          <div class="hero-stat" style="border-color:rgba(239,68,68,0.2);min-width:130px;text-align:left;padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">📉</span>
+              <div class="hero-stat-val" style="color:#b91c1c;font-size:14px;font-weight:700;">① 大盘波动 β</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">牛市人人赚，熊市人人亏<br>跟你的能力无关</div>
+          </div>
+          <div class="hero-stat" style="border-color:rgba(245,158,11,0.2);min-width:130px;text-align:left;padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">🎲</span>
+              <div class="hero-stat-val" style="color:#b45309;font-size:14px;font-weight:700;">② 运气与情绪</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">短期偶然，不可持续<br>以为自己厉害，其实是运气</div>
+          </div>
+          <div class="hero-stat" style="border-color:rgba(0,185,107,0.25);min-width:130px;text-align:left;padding:14px 16px;background:rgba(0,185,107,0.06);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">🎯</span>
+              <div class="hero-stat-val" style="color:var(--green);font-size:14px;font-weight:700;">③ 交易能力 α ✓</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">认知、体系和纪律<br>唯一可以学习和持续提升的</div>
+          </div>
+        </div>
       </div>
     </div>
 
   </div>
+
+    <!-- SLIDE 4: 产品能做什么 -->
+    <div class="hero-slide" data-slide="3">
+      <div class="hero-slide-inner">
+        <div class="hero-left">
+          <div class="hero-tag">
+            <span>🛠</span> 三步，从一堆交易记录到清晰的行动方向
+          </div>
+          <div class="hero-title">
+            不是看报告，<br>
+            是找到<em>下一步该改什么</em>
+          </div>
+          <div class="hero-sub">
+            上传你的 Excel 成交记录，胜算自动完成配对、计算、诊断——告诉你问题出在哪、怎么改，而不只是给你一堆数字。
+          </div>
+          <div class="hero-formula">
+            <strong>上传记录</strong>
+            <span style="color:var(--t3)">→</span>
+            <strong>量化诊断</strong>
+            <span style="color:var(--t3)">→</span>
+            <strong>改进行动</strong>
+          </div>
+        </div>
+        <div class="hero-right" style="flex-direction:column;gap:10px;">
+          <div class="hero-stat" style="border-color:rgba(0,185,107,0.25);min-width:130px;text-align:left;padding:14px 16px;background:rgba(0,185,107,0.04);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">📂</span>
+              <div class="hero-stat-val" style="color:var(--green);font-size:14px;font-weight:700;">① 上传记录</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">支持 IBKR 原始格式<br>自动 FIFO 配对，识别持仓</div>
+          </div>
+          <div class="hero-stat" style="border-color:rgba(59,130,246,0.2);min-width:130px;text-align:left;padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">🔍</span>
+              <div class="hero-stat-val" style="color:#1d6ae5;font-size:14px;font-weight:700;">② 系统诊断</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">期望值 R · 胜率 · 盈亏比<br>根因分析，找出最大拖累</div>
+          </div>
+          <div class="hero-stat" style="border-color:rgba(245,158,11,0.2);min-width:130px;text-align:left;padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">📈</span>
+              <div class="hero-stat-val" style="color:#b45309;font-size:14px;font-weight:700;">③ 建立体系</div>
+            </div>
+            <div class="hero-stat-lbl" style="line-height:1.5;font-size:11px;">保存历史，追踪成长曲线<br>看清自己是在进步还是原地踏步</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
   <!-- dots -->
   <div class="hero-dots" id="heroDots">
     <span class="hero-dot active" onclick="heroGoTo(0)"></span>
     <span class="hero-dot" onclick="heroGoTo(1)"></span>
     <span class="hero-dot" onclick="heroGoTo(2)"></span>
+    <span class="hero-dot" onclick="heroGoTo(3)"></span>
   </div>
 </div>
 <div class="page on" id="p-overview">
