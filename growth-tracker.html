@@ -625,9 +625,6 @@ tbody tr:hover { background:var(--bg); }
       </div>
       <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">
         <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
-          <span style="width:10px;height:10px;background:var(--green);display:inline-block;border-radius:2px;opacity:0.7;"></span><span id="leg0">综合分（柱）</span>
-        </span>
-        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
           <span style="width:16px;height:2px;background:#e8364f;display:inline-block;border-radius:1px;"></span><span id="leg1">期望值 R</span>
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
@@ -635,6 +632,9 @@ tbody tr:hover { background:var(--bg); }
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
           <span style="width:16px;height:2px;background:var(--yellow);display:inline-block;border-radius:1px;"></span><span id="leg3">盈亏比×10</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);">
+          <span style="width:10px;height:10px;background:var(--green);display:inline-block;border-radius:2px;opacity:0.7;"></span><span id="leg0">综合分（柱）</span>
         </span>
       </div>
     </div>
@@ -1152,11 +1152,11 @@ function drawKPI() {
 // ── INSIGHT ───────────────────────────────────────────
 function buildAttributionLocked(isEn, sysEx, sysWr, sysPl) {
   if (!lastTrades || !lastTrades.length) return '';
-  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损');
+  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损' || t.status==='盈利(持仓)' || t.status==='亏损(持仓)');
   if (!done.length) return '';
 
-  const wins   = done.filter(t => t.status==='盈利');
-  const losses = done.filter(t => t.status==='亏损');
+  const wins   = done.filter(t => t.status==='盈利' || t.status==='盈利(持仓)');
+  const losses = done.filter(t => t.status==='亏损' || t.status==='亏损(持仓)');
 
   // Derive root cause TITLE only (no body)
   let causeTitle = '';
@@ -1489,17 +1489,18 @@ function openUpgradeModal() {
 
 function buildAttribution(isEn, sysEx, sysWr, sysPl) {
   if (!lastTrades || !lastTrades.length) return '';
-  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损');
+  const done = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损' || t.status==='盈利(持仓)' || t.status==='亏损(持仓)');
   if (!done.length) return '';
 
-  const wins   = done.filter(t => t.status==='盈利').sort((a,b) => b.pct - a.pct);
-  const losses = done.filter(t => t.status==='亏损').sort((a,b) => a.pct - b.pct);
+  const wins   = done.filter(t => t.status==='盈利' || t.status==='盈利(持仓)').sort((a,b) => b.pct - a.pct);
+  const losses = done.filter(t => t.status==='亏损' || t.status==='亏损(持仓)').sort((a,b) => a.pct - b.pct);
   const avgWin  = wins.length  ? wins.reduce((s,t)=>s+t.pct,0)/wins.length   : 0;
   const avgLoss = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.pct,0)/losses.length) : 0;
   const avgNet  = done.length   ? done.reduce((s,t)=>s+Math.abs(t.net),0)/done.length : 0;
   const topWins   = wins.slice(0, 3);
   const topLosses = losses.slice(0, 3);
   const maxPct = Math.max(...done.map(t => Math.abs(t.pct)), 1);
+  const worstTrade = losses.length ? [...losses].sort((a,b) => Math.abs(b.net)-Math.abs(a.net))[0] : null;
 
   // ── single root cause, consistent with system diagnosis ──
   // Priority: negative expectancy → find THE worst offender
@@ -1643,27 +1644,33 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
           </div>` : ''}
       </div>
 
-      <!-- RIGHT: trade breakdown -->
+      <!-- RIGHT: summary stats -->
       <div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--green);letter-spacing:0.5px;margin-bottom:6px;">
-              ✅ ${isEn?'WINNERS':'盈利'} <span style="font-weight:400;color:var(--t3)">(${wins.length})</span>
-            </div>
-            ${topWins.length ? topWins.map(t=>tradeRow(t,'var(--green)')).join('')
-              : `<div style="font-size:12px;color:var(--t3);padding:12px 0;text-align:center;">${isEn?'None':'暂无'}</div>`}
+        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'📊 SUMMARY':'📊 本批次总结'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div style="background:rgba(0,185,107,0.05);border:1px solid rgba(0,185,107,0.15);border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">✅ ${isEn?'WINNERS':'盈利'}</div>
+            <div style="font-size:22px;font-weight:800;color:var(--green);font-family:'DM Mono',monospace;">${wins.length}</div>
+            <div style="font-size:11px;color:var(--green);margin-top:2px;">+${avgWin.toFixed(1)}% ${isEn?'avg':'均盈'}</div>
           </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:0.5px;margin-bottom:6px;">
-              ❌ ${isEn?'LOSERS':'亏损'} <span style="font-weight:400;color:var(--t3)">(${losses.length})</span>
-            </div>
-            ${topLosses.length ? topLosses.map(t=>tradeRow(t,'var(--red)')).join('')
-              : `<div style="font-size:12px;color:var(--t3);padding:12px 0;text-align:center;">${isEn?'None':'暂无'}</div>`}
+          <div style="background:rgba(232,54,79,0.05);border:1px solid rgba(232,54,79,0.15);border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">❌ ${isEn?'LOSERS':'亏损'}</div>
+            <div style="font-size:22px;font-weight:800;color:var(--red);font-family:'DM Mono',monospace;">${losses.length}</div>
+            <div style="font-size:11px;color:var(--red);margin-top:2px;">-${avgLoss.toFixed(1)}% ${isEn?'avg':'均亏'}</div>
           </div>
         </div>
-        ${done.length > 6 ? `<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:right;">
-          ${isEn?`Top 3 of ${wins.length}W / ${losses.length}L`:`前3笔 · 共${wins.length}盈/${losses.length}亏`}
+        ${worstTrade ? `
+        <div style="background:rgba(232,54,79,0.04);border:1px solid rgba(232,54,79,0.15);border-radius:10px;padding:11px 13px;">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">${isEn?'⚠️ BIGGEST DRAG':'⚠️ 拖累最大'}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstTrade.sym}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--red);">${worstTrade.pct.toFixed(2)}%</span>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Net loss: -$${Math.abs(worstTrade.net).toFixed(2)}`:`净亏损：-$${Math.abs(worstTrade.net).toFixed(2)}`}</div>
         </div>` : ''}
+        <div style="font-size:11px;color:var(--t3);margin-top:10px;text-align:right;">
+          ${isEn?'Per-symbol breakdown ↓ below':'个股详细分析见下方 ↓'}
+        </div>
       </div>
 
     </div>
@@ -1685,16 +1692,20 @@ function drawInsight() {
   else                         { vName=L.verdicts['负期望']; vColor='var(--red)'; vBg='rgba(232,54,79,0.07)'; }
 
   const items = [];
-  if (wr>=60)      items.push({icon:'✅',title:isEn?'Strong Win Rate':`胜率良好`,body:isEn?`Win rate ${wr.toFixed(1)}%, above the 60% benchmark. Entry timing and stock selection are solid.`:`胜率 ${wr.toFixed(1)}%，超过 60% 基准线，入场时机和选股质量不错。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
+
+  // 1. 期望值
+  if (ex>0) items.push({icon:'✅',title:isEn?'Positive Edge — Keep Executing':'正期望，可以持续执行',body:isEn?`Expectancy +${ex.toFixed(2)}%. Long-term consistent execution will compound profits.`:`期望值 +${ex.toFixed(2)}%，每笔平均预期盈利 ${ex.toFixed(2)}%。长期坚持执行会稳定累积利润。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
+  else      items.push({icon:'❌',title:isEn?'Negative Edge — Stop and Fix First':'负期望，交易越多亏越多',body:isEn?`Expectancy ${ex.toFixed(2)}%. Expected loss per trade. Fix win rate or P/L ratio before sizing up.`:`期望值 ${ex.toFixed(2)}%，每笔平均预期亏损。先修复胜率或盈亏比，再考虑加仓。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
+
+  // 2. 胜率
+  if (wr>=60)      items.push({icon:'✅',title:isEn?'Strong Win Rate':'胜率良好',body:isEn?`Win rate ${wr.toFixed(1)}%, above the 60% benchmark. Entry timing and stock selection are solid.`:`胜率 ${wr.toFixed(1)}%，超过 60% 基准线，入场时机和选股质量不错。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
   else if (wr>=50) items.push({icon:'🟡',title:isEn?'Win Rate OK, Room to Improve':'胜率尚可，有提升空间',body:isEn?`Win rate ${wr.toFixed(1)}%. You have a slight edge but room to tighten entry criteria.`:`胜率 ${wr.toFixed(1)}%，有正向优势但不突出。建议收紧入场条件。`,color:'var(--yellow)',bg:'rgba(217,119,6,0.05)'});
   else             items.push({icon:'⚠️',title:isEn?'Low Win Rate — Review Entries':'胜率偏低，需重新审视入场',body:isEn?`Win rate ${wr.toFixed(1)}%. Over half your trades lose. Review your entry signals.`:`胜率 ${wr.toFixed(1)}%，超过一半的交易亏损。回顾入场条件，减少低质量信号。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
 
+  // 3. 盈亏比
   if (pl>=2.0)      items.push({icon:'✅',title:isEn?'P/L Ratio On Target':'盈亏比达标',body:isEn?`P/L ratio ${pl.toFixed(2)}, meets the professional standard (≥2.0). Each win is ${pl.toFixed(1)}× the average loss.`:`盈亏比 ${pl.toFixed(2)}，达到专业标准（≥2.0）。每次盈利是亏损的 ${pl.toFixed(1)} 倍。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
   else if (pl>=1.5) items.push({icon:'🟡',title:isEn?'P/L Ratio Below Target':'盈亏比偏低，建议优化',body:isEn?`P/L ratio ${pl.toFixed(2)}, below the 2.0 target. Try widening take-profit or tightening stop-loss.`:`盈亏比 ${pl.toFixed(2)}，距目标 2.0 有差距。尝试拓宽止盈位，或收紧止损。`,color:'var(--yellow)',bg:'rgba(217,119,6,0.05)'});
   else              items.push({icon:'⚠️',title:isEn?'P/L Ratio Too Low':'盈亏比不足，关键问题',body:isEn?`P/L ratio only ${pl.toFixed(2)}. Wins don't cover losses. Fix your exit strategy first.`:`盈亏比仅 ${pl.toFixed(2)}，盈利覆盖不了亏损。优先修复止盈止损策略。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
-
-  if (ex>0) items.push({icon:'✅',title:isEn?'Positive Edge — Keep Executing':'正期望，可以持续执行',body:isEn?`Expectancy +${ex.toFixed(2)}%. Long-term consistent execution will compound profits.`:`期望值 +${ex.toFixed(2)}%，每笔平均预期盈利 ${ex.toFixed(2)}%。长期坚持执行会稳定累积利润。`,color:'var(--green)',bg:'rgba(0,185,107,0.05)'});
-  else      items.push({icon:'❌',title:isEn?'Negative Edge — Stop and Fix First':'负期望，交易越多亏越多',body:isEn?`Expectancy ${ex.toFixed(2)}%. Expected loss per trade. Fix win rate or P/L ratio before sizing up.`:`期望值 ${ex.toFixed(2)}%，每笔平均预期亏损。先修复胜率或盈亏比，再考虑加仓。`,color:'var(--red)',bg:'rgba(232,54,79,0.05)'});
 
   el.innerHTML = `
     <div class="verdict-pill" style="background:${vBg};">
@@ -1891,6 +1902,39 @@ function buildSymbolAnalysis(trades, isEn) {
   const fp = v => (v>=0?'+':'')+v.toFixed(2)+'%';
   const fc = v => v>=0?'var(--green)':'var(--red)';
 
+  // Generate plain-language diagnosis for each symbol
+  function symDiagnosis(s, type, isEn) {
+    if (type === 'win') {
+      if (s.wr >= 70 && s.pl >= 2.0)
+        return isEn ? `Win rate ${s.wr.toFixed(0)}% + P/L ${s.pl.toFixed(1)}× — both above benchmark. You read this stock well and held winners long enough.`
+                    : `胜率 ${s.wr.toFixed(0)}%，盈亏比 ${s.pl.toFixed(1)}，两项都达标。你对这只股票判断准，也拿得住盈利。`;
+      if (s.wr >= 65)
+        return isEn ? `High win rate (${s.wr.toFixed(0)}%) is carrying this stock. You enter at the right time consistently.`
+                    : `胜率 ${s.wr.toFixed(0)}% 很高，靠准确的入场时机赚钱。继续保持这套判断逻辑。`;
+      if (s.pl >= 2.5)
+        return isEn ? `P/L ratio ${s.pl.toFixed(1)}× is exceptional. When you're right on this stock, you let it run — that's the right behavior.`
+                    : `盈亏比 ${s.pl.toFixed(1)} 非常出色，赚钱时拿得住、亏钱时止损快。这只股票上的执行是对的。`;
+      if (s.pl < 1.5 && s.wr >= 60)
+        return isEn ? `Win rate is good (${s.wr.toFixed(0)}%) but P/L ratio ${s.pl.toFixed(1)}× is low — you're exiting winners too early. More upside if you hold longer.`
+                    : `胜率不错（${s.wr.toFixed(0)}%），但盈亏比只有 ${s.pl.toFixed(1)}，说明赚钱时走得太早。多拿一会儿盈利会更高。`;
+      return isEn ? `Positive edge on this stock. Keep trading it the same way.`
+                  : `这只股票上有正期望，按现在的方式继续做就行。`;
+    } else {
+      // loss stock
+      if (s.wr < 40)
+        return isEn ? `Win rate only ${s.wr.toFixed(0)}% — you lose more often than you win on this stock. The entry logic for this one isn't working.`
+                    : `胜率只有 ${s.wr.toFixed(0)}%，这只股票输多赢少。入场逻辑可能不适合这只股票，考虑减少交易频率或停止交易。`;
+      if (s.avgLoss > s.avgWin * 2)
+        return isEn ? `Avg loss (${s.avgLoss.toFixed(1)}%) is ${(s.avgLoss/Math.max(s.avgWin,0.1)).toFixed(1)}× your avg win (${s.avgWin.toFixed(1)}%). You're letting losses run far too long on this one.`
+                    : `均亏 ${s.avgLoss.toFixed(1)}% 是均盈 ${s.avgWin.toFixed(1)}% 的 ${(s.avgLoss/Math.max(s.avgWin,0.1)).toFixed(1)} 倍。这只股票上亏损时明显扛单了，止损没有严格执行。`;
+      if (s.pl < 0.6)
+        return isEn ? `P/L ratio ${s.pl.toFixed(2)} is very low — each loss is wiping out multiple wins. Stop-loss discipline is the problem here.`
+                    : `盈亏比 ${s.pl.toFixed(2)} 极低，每次亏损抵消了好几次盈利。这只股票上止损纪律是核心问题。`;
+      return isEn ? `Negative edge overall. Both win rate (${s.wr.toFixed(0)}%) and P/L (${s.pl.toFixed(2)}) are below target on this stock.`
+                  : `整体负期望，胜率（${s.wr.toFixed(0)}%）和盈亏比（${s.pl.toFixed(2)}）都不达标。这只股票可以暂停交易，复盘入场逻辑后再做。`;
+    }
+  }
+
   const symRow = (s, rank, type) => {
     const exColor = s.ex>0?'var(--green)':s.ex<0?'var(--red)':'var(--t3)';
     const wrColor = s.wr>=60?'var(--green)':s.wr>=45?'var(--yellow)':'var(--red)';
@@ -1898,9 +1942,12 @@ function buildSymbolAnalysis(trades, isEn) {
     const medal = rank===0?'🥇':rank===1?'🥈':'🥉';
     const barW = Math.min(Math.abs(s.totalNet)/Math.max(...symStats.map(x=>Math.abs(x.totalNet)))*100,100).toFixed(0);
     const barColor = s.totalNet>=0?'var(--green)':'var(--red)';
+    const diagText = symDiagnosis(s, type, isEn);
+    const diagBg = type==='win' ? 'rgba(0,185,107,0.05)' : 'rgba(232,54,79,0.05)';
+    const diagBorder = type==='win' ? 'rgba(0,185,107,0.15)' : 'rgba(232,54,79,0.15)';
     return `
     <div style="padding:14px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:16px;">${medal}</span>
         <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;">${s.sym}</span>
         <span style="font-size:11px;color:var(--t3);">${s.trades} ${isEn?'trades':'笔'}</span>
@@ -1909,7 +1956,7 @@ function buildSymbolAnalysis(trades, isEn) {
       <div style="height:4px;background:var(--bg);border-radius:2px;margin-bottom:10px;">
         <div style="height:100%;width:${barW}%;background:${barColor};border-radius:2px;opacity:0.6;"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
         <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px;">
           <div style="font-size:9px;color:var(--t3);margin-bottom:3px;">${isEn?'WIN RATE':'胜率'}</div>
           <div style="font-size:13px;font-weight:700;color:${wrColor};font-family:'DM Mono',monospace;">${s.wr.toFixed(0)}%</div>
@@ -1925,11 +1972,9 @@ function buildSymbolAnalysis(trades, isEn) {
           <div style="font-size:13px;font-weight:700;color:${exColor};font-family:'DM Mono',monospace;">${fp(s.ex)}</div>
           <div style="font-size:9px;color:var(--t3);">${isEn?'per trade':'每笔均值'}</div>
         </div>
-        <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px;">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:3px;">${isEn?'NET P&L':'净盈亏'}</div>
-          <div style="font-size:13px;font-weight:700;color:${fc(s.totalNet)};font-family:'DM Mono',monospace;">${fm(s.totalNet)}</div>
-          <div style="font-size:9px;color:var(--t3);">${isEn?'total':'累计'}</div>
-        </div>
+      </div>
+      <div style="background:${diagBg};border:1px solid ${diagBorder};border-radius:8px;padding:10px 12px;">
+        <div style="font-size:12px;color:var(--t2);line-height:1.7;">${diagText}</div>
       </div>
     </div>`;
   };
@@ -1981,11 +2026,14 @@ function drawPnl() {
   const tFee=done.reduce((s,t)=>s+t.fee,0);
   const winRate=done.length?wins.length/done.length*100:0;
   const meta=document.getElementById('pnlMeta');
-  if(meta) meta.textContent=`已完成 ${done.length} 笔 · 持仓中 ${hold.length} 笔`;
+  const openCount = done.filter(t=>t.status==='盈利(持仓)'||t.status==='亏损(持仓)').length;
+  if(meta) meta.textContent=`已完成 ${done.length-openCount} 笔 · 持仓浮动 ${openCount} 笔 · 价格待出场 ${hold.length} 笔`;
   const nc=tNet>=0?'var(--green)':'var(--red)';
   const fm=v=>{const a=Math.abs(v);return(v>=0?'+':'-')+'$'+(a>=10000?(a/1000).toFixed(1)+'k':a.toFixed(2));};
   const fp=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
+  const openNote = openCount>0 ? `<div style="font-size:11px;color:var(--t3);margin-bottom:10px;padding:6px 10px;background:rgba(217,119,6,0.06);border-radius:6px;border-left:3px solid var(--yellow);">📍 含 ${openCount} 笔持仓浮动盈亏，随行情变动</div>` : '';
   sec.innerHTML=`
+    ${openNote}
     <div class="g3" style="margin-bottom:14px;">
       <div class="pnl-card"><div class="pnl-lbl">总净盈亏</div><div class="pnl-val" style="color:${nc}">${fm(tNet)}</div><div class="pnl-note">总盈亏率 <strong style="font-family:'DM Mono',monospace;color:${nc}">${fp(tPct)}</strong></div></div>
       <div class="pnl-card"><div class="pnl-lbl">盈利交易</div><div class="pnl-val" style="color:var(--green)">${fm(wNet)}</div><div class="pnl-note">${wins.length} 笔 · 胜率 <strong style="font-family:'DM Mono',monospace;color:var(--green)">${winRate.toFixed(1)}%</strong></div></div>
