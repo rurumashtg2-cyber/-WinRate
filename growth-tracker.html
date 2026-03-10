@@ -3376,15 +3376,28 @@ document.addEventListener('DOMContentLoaded', function(){
   const total = document.querySelectorAll('.hero-slide').length;
   let cur = 0, timer;
 
+  let paused = false;
+
   window.heroGoTo = function(n) {
     cur = n;
     track.style.transform = `translateX(-${cur * 100}%)`;
     dots.forEach((d, i) => d.classList.toggle('active', i === cur));
-    resetTimer();
+    if (!paused) resetTimer();
   };
 
   function next() { heroGoTo((cur + 1) % total); }
   function resetTimer() { clearInterval(timer); timer = setInterval(next, 4000); }
+
+  const carousel = document.getElementById('heroCarousel');
+  carousel.addEventListener('mouseenter', function() {
+    paused = true;
+    clearInterval(timer);
+  });
+  carousel.addEventListener('mouseleave', function() {
+    paused = false;
+    resetTimer();
+  });
+
   resetTimer();
 });
 </script>
