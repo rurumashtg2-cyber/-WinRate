@@ -1134,8 +1134,29 @@ function drawKPI() {
   el.innerHTML = `
     <div class="card">
       <div class="kpi-lbl">${L.kpi[0]} ${helpBtn('ex')}</div>
-      <div class="kpi-val" style="color:${ex_c}">${lat.期望值>0?'+':''}${lat.期望值.toFixed(2)}%</div>
-      <div class="kpi-note">${L.kpi_note[0]}</div>
+      <div class="kpi-val" style="color:${ex_c}">${lat.期望值>=0?'+':''}${(lat.期望值/100).toFixed(3)}</div>
+      <div class="kpi-note" style="line-height:1.5;">${(()=>{
+        const R = lat.期望值/100;
+        const pl = lat.盈亏比, wr = lat.胜率;
+        const absR = Math.abs(R).toFixed(3);
+        if (isEn) {
+          const dir = R >= 0 ? `earn $${absR}` : `lose $${absR}`;
+          const fix = pl < 1.5 && wr >= 45
+            ? `P/L ratio ${pl.toFixed(2)} is the main issue — needs to reach at least 1.5.`
+            : wr < 45
+            ? `Win rate ${wr.toFixed(1)}% is too low — target 50%+.`
+            : `Both metrics need improvement.`;
+          return `Per $1 risked, you ${dir} on average. ${fix}`;
+        } else {
+          const dir = R >= 0 ? `平均盈得 $${absR}` : `平均亏掉 $${absR}`;
+          const fix = pl < 1.5 && wr >= 45
+            ? `主要问题出在盈亏比 ${pl.toFixed(2)} 偏低，至少提升到 1.5 才算有效交易，胜率 ${wr.toFixed(1)}% 正常。`
+            : wr < 45
+            ? `胜率 ${wr.toFixed(1)}% 偏低，目标 50% 以上，同时盈亏比 ${pl.toFixed(2)} 也需改善。`
+            : `胜率 ${wr.toFixed(1)}%，盈亏比 ${pl.toFixed(2)}，两项均需提升。`;
+          return `每冒 $1 的风险，${dir}。${fix}`;
+        }
+      })()}</div>
       ${dv(lat.期望值, prev?.期望值, '%')}
     </div>
     <div class="card">
