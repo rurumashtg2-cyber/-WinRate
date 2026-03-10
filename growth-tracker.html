@@ -754,7 +754,6 @@ tbody tr:hover { background:var(--bg); }
     </div>
     <div class="res-grid" id="resMetrics"></div>
     <div id="verdictBox"></div>
-    <div id="manualPriceBox" style="display:none;margin-top:12px;"></div>
     <div class="save-bar">
       <div style="font-size:13px;color:var(--t2);">将此次分析保存到历史记录，追踪 <strong style="color:var(--green)">能力成长曲线</strong></div>
       <button class="btn-g" id="saveBtn" onclick="saveToHistory()">💾 保存到历史</button>
@@ -825,8 +824,6 @@ const KEY = 'shenglvv1';
 let D = [];
 let lastTrades = null;
 let lastResult = null;
-let pendingOpenPositions = []; // positions that failed price fetch, need manual input
-let manualPrices = {};         // sym -> manually entered price
 
 function demoData() {
   return [
@@ -849,6 +846,17 @@ function localSave() {
 
 // ── AUTH ─────────────────────────────────────────────
 async function initAuth() {
+  // Handle OAuth callback: Supabase PKCE puts ?code= in URL after Google redirect
+  // exchangeCodeForSession picks it up and sets the session automatically
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code')) {
+    try {
+      await sb.auth.exchangeCodeForSession(window.location.href);
+    } catch(e) {}
+    // Clean URL so code isn't reused on refresh
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
     await onLogin(session.user);
@@ -964,7 +972,7 @@ async function signInWithGoogle() {
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.href
+      redirectTo: window.location.origin + window.location.pathname
     }
   });
   if (error) {
@@ -2256,40 +2264,13 @@ async function analyzeIBKR(rows) {
 
   // Fetch current prices for open positions
   if (openPositions.length > 0) {
-    const loadingEl = document.getElementById('verdictBox');
-    if (loadingEl) loadingEl.innerHTML = `<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">⏳ 正在获取持仓股价（${openPositions.map(p=>p.sym).join('、')}）…</div>`;
-
-    const prices = await fetchPrices(openPositions.map(p => p.sym));
-
-    // merge manual prices
-    Object.assign(prices, manualPrices);
-
-    const failed = [];
     openPositions.forEach(pos => {
-      const currentPrice = prices[pos.sym];
-      if (currentPrice) {
-        const gross = (currentPrice - pos.avgPrice) * pos.qty;
-        const net = gross - pos.totalFee;
-        const pct = (currentPrice - pos.avgPrice) / pos.avgPrice * 100;
-        trades.push({
-          sym: pos.sym, bp: pos.avgPrice, sp: currentPrice, qty: pos.qty,
-          fee: pos.totalFee, net, pct,
-          status: net >= 0 ? '盈利(持仓)' : '亏损(持仓)',
-          bq: pos.qty, sq: 0,
-          currentPrice, isOpen: true
-        });
-      } else {
-        failed.push(pos);
-        trades.push({
-          sym: pos.sym, bp: pos.avgPrice, sp: 0, qty: pos.qty,
-          fee: 0, net: 0, pct: 0, status: '持仓中',
-          bq: pos.qty, sq: 0, isOpen: true
-        });
-      }
+      trades.push({
+        sym: pos.sym, bp: pos.avgPrice, sp: 0, qty: pos.qty,
+        fee: pos.totalFee, net: 0, pct: 0, status: '持仓中',
+        bq: pos.qty, sq: 0, isOpen: true
+      });
     });
-
-    pendingOpenPositions = failed;
-    if (failed.length > 0) showManualPriceUI(failed, trades);
   }
 
   lastTrades = trades;
@@ -2333,88 +2314,6 @@ function analyzePaired(rows) {
   renderResults(trades);
 }
 
-// ── manual price input for failed fetches ────────────
-function showManualPriceUI(failedPositions, currentTrades) {
-  const isEn = lang === 'en';
-  const container = document.getElementById('manualPriceBox');
-  if (!container) return;
-
-  const rows = failedPositions.map(pos => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-      <span style="font-family:'DM Mono',monospace;font-weight:700;min-width:60px;">${pos.sym}</span>
-      <span style="font-size:11px;color:var(--t3);flex:1;">${isEn?'avg cost':'均价'} $${pos.avgPrice.toFixed(2)} · ${pos.qty}${isEn?' shares':' 股'}</span>
-      <input type="number" step="0.01" placeholder="${isEn?'current price':'当前价格'}"
-        id="mp_${pos.sym}"
-        style="width:110px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;background:var(--bg);color:var(--t1);"
-        onkeydown="if(event.key==='Enter')applyManualPrices()">
-    </div>`).join('');
-
-  container.innerHTML = `
-    <div class="card" style="border:1px solid rgba(217,119,6,0.3);background:rgba(217,119,6,0.03);">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <span style="font-size:15px;">⚠️</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--yellow);">${isEn?`${failedPositions.length} positions couldn't fetch price`:`${failedPositions.length} 个持仓未能自动获取价格`}</div>
-          <div style="font-size:11px;color:var(--t3);">${isEn?'Enter current prices to include them in analysis':'填入当前价格，纳入统计分析'}</div>
-        </div>
-      </div>
-      <div style="margin-bottom:12px;">${rows}</div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="applyManualPrices()" style="flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">
-          ${isEn?'✓ Apply & Recalculate':'✓ 确认，重新计算'}
-        </button>
-        <button onclick="dismissManualPriceUI()" style="padding:9px 14px;background:var(--bg);color:var(--t2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;">
-          ${isEn?'Skip':'跳过'}
-        </button>
-      </div>
-    </div>`;
-  container.style.display = 'block';
-}
-
-function applyManualPrices() {
-  if (!lastTrades) return;
-  const updated = {};
-  pendingOpenPositions.forEach(pos => {
-    const el = document.getElementById('mp_' + pos.sym);
-    const val = el ? parseFloat(el.value) : NaN;
-    if (!isNaN(val) && val > 0) updated[pos.sym] = val;
-  });
-  if (!Object.keys(updated).length) return;
-
-  // merge into manualPrices
-  Object.assign(manualPrices, updated);
-
-  // update lastTrades in place
-  lastTrades = lastTrades.map(t => {
-    if (t.status === '持仓中' && updated[t.sym]) {
-      const cp = updated[t.sym];
-      const gross = (cp - t.bp) * t.qty;
-      const net = gross - t.fee;
-      const pct = (cp - t.bp) / t.bp * 100;
-      return { ...t, sp: cp, net, pct, status: net >= 0 ? '盈利(持仓)' : '亏损(持仓)', currentPrice: cp };
-    }
-    return t;
-  });
-
-  // remove resolved from pending
-  pendingOpenPositions = pendingOpenPositions.filter(p => !updated[p.sym]);
-
-  const container = document.getElementById('manualPriceBox');
-  if (pendingOpenPositions.length === 0) {
-    if (container) container.style.display = 'none';
-  } else {
-    showManualPriceUI(pendingOpenPositions, lastTrades);
-  }
-  renderResults(lastTrades);
-  drawPnl();
-  drawInsight();
-  drawLine();
-}
-
-function dismissManualPriceUI() {
-  const container = document.getElementById('manualPriceBox');
-  if (container) container.style.display = 'none';
-}
 
 // ── shared result renderer ────────────────────────────
 function renderResults(trades) {
