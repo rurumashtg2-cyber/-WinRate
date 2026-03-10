@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
   --bg:     #f0f2f7;
@@ -584,6 +585,9 @@ tbody tr:hover { background:var(--bg); }
       <div class="sec-title" id="secAbilityTitle">交易能力</div>
       <div class="sec-desc" id="abilityMeta">基于历史记录最新数据</div>
     </div>
+    <button id="shareCardBtn" onclick="generateShareCard()" style="display:none;margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+      <span>📤</span> <span id="shareCardBtnTxt">生成长图</span>
+    </button>
   </div>
 
   <!-- 4 KPI -->
@@ -1041,6 +1045,13 @@ function drawKPI() {
   const meta = document.getElementById('abilityMeta');
   if (meta) meta.textContent = `最近更新：${lat.date}　·　共 ${D.length} 次记录`;
 
+  const shareBtn = document.getElementById('shareCardBtn');
+  const shareTxt = document.getElementById('shareCardBtnTxt');
+  if (shareBtn) {
+    shareBtn.style.display = 'flex';
+    if (shareTxt) shareTxt.textContent = lang === 'en' ? 'Share Card' : '生成长图';
+  }
+
   const dv = (cur, pre, suf='') => {
     if (pre == null) return '<div style="height:18px"></div>';
     const d = +(cur - pre).toFixed(2);
@@ -1214,6 +1225,188 @@ function buildAttributionLocked(isEn, sysEx, sysWr, sysPl) {
       </div>
     </div>
   </div>`;
+}
+
+async function generateShareCard() {
+  const isEn = lang === 'en';
+  const btn = document.getElementById('shareCardBtn');
+  const btnTxt = document.getElementById('shareCardBtnTxt');
+  if (btn) { btn.disabled = true; btnTxt.textContent = isEn ? 'Generating…' : '生成中…'; }
+
+  try {
+    // Build offscreen card
+    const card = document.createElement('div');
+    card.style.cssText = `
+      position:fixed; left:-9999px; top:0;
+      width:420px; background:#fff;
+      font-family:'DM Mono','Noto Sans SC',sans-serif;
+      padding:0; border-radius:20px; overflow:hidden;
+      box-shadow:0 8px 40px rgba(0,0,0,0.12);
+    `;
+
+    const lat = D[D.length - 1];
+    const sc = score(lat);
+    const ex = lat.期望值, wr = lat.胜率, pl = lat.盈亏比;
+    const exColor = ex > 0 ? '#00b96b' : '#e8364f';
+    const scColor = sc >= 70 ? '#00b96b' : sc >= 45 ? '#d97706' : '#e8364f';
+
+    let verdictZh = ex>1.2&&wr>=58&&pl>=2.0 ? '优秀系统' : ex>0 ? '正期望系统' : '负期望系统';
+    let verdictEn = ex>1.2&&wr>=58&&pl>=2.0 ? 'Strong System' : ex>0 ? 'Positive Edge' : 'Negative Edge';
+    const verdict = isEn ? verdictEn : verdictZh;
+    const verdictColor = ex>1.2&&wr>=58&&pl>=2.0 ? '#00b96b' : ex>0 ? '#d97706' : '#e8364f';
+    const verdictBg = ex>1.2&&wr>=58&&pl>=2.0 ? 'rgba(0,185,107,0.08)' : ex>0 ? 'rgba(217,119,6,0.08)' : 'rgba(232,54,79,0.07)';
+
+    // KPI items
+    const kpis = [
+      { label: isEn?'Expectancy R':'期望值 R', val: (ex>0?'+':'')+ex.toFixed(2)+'%', color: exColor },
+      { label: isEn?'Win Rate':'胜率', val: wr.toFixed(1)+'%', color: wr>=60?'#00b96b':wr>=50?'#d97706':'#e8364f' },
+      { label: isEn?'P/L Ratio':'盈亏比', val: pl.toFixed(2), color: pl>=2?'#00b96b':pl>=1.5?'#d97706':'#e8364f' },
+      { label: isEn?'Score':'综合分', val: String(sc), color: scColor },
+    ];
+
+    // Clone diagnosis body (text only, no blur)
+    const diagEl = document.getElementById('insightBody');
+    const diagClone = diagEl ? diagEl.cloneNode(true) : null;
+    if (diagClone) {
+      // Remove blur styles from cloned content
+      diagClone.querySelectorAll('[style]').forEach(el => {
+        el.style.filter = '';
+        el.style.userSelect = '';
+        el.style.pointerEvents = '';
+      });
+      // Remove lock buttons/overlays
+      diagClone.querySelectorAll('button, [onclick]').forEach(el => el.remove());
+    }
+
+    // Attribution body clone
+    const attrEl = document.getElementById('attributionRow');
+    const attrClone = attrEl && attrEl.style.display !== 'none' ? attrEl.cloneNode(true) : null;
+    if (attrClone) {
+      attrClone.querySelectorAll('[style*="blur"], button, [onclick]').forEach(el => {
+        if (el.tagName === 'BUTTON' || el.getAttribute('onclick')) { el.remove(); return; }
+        el.style.filter = '';
+      });
+    }
+
+    card.innerHTML = `
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#e6f7ef 0%,#f0f9ff 50%,#f3f0ff 100%);padding:28px 28px 20px;border-bottom:1px solid #eee;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="width:36px;height:36px;background:#00b96b;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-size:18px;">📊</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:#111;">胜率 WinRate</div>
+            <div style="font-size:11px;color:#888;">${lat.date} · ${isEn?'Trading Report':'交易能力报告'}</div>
+          </div>
+          <div style="margin-left:auto;background:${verdictBg};color:${verdictColor};font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid ${verdictColor}33;">
+            ${verdict}
+          </div>
+        </div>
+        <!-- Big R -->
+        <div style="text-align:center;padding:16px 0 8px;">
+          <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:4px;">${isEn?'EXPECTANCY R':'期望值 R'}</div>
+          <div style="font-size:52px;font-weight:800;color:${exColor};line-height:1;">${(ex>0?'+':'')+ex.toFixed(2)}<span style="font-size:22px;">%</span></div>
+          <div style="font-size:12px;color:#888;margin-top:6px;">${isEn?'Expected return per trade':'每笔交易平均预期收益'}</div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1px 1fr;gap:0;padding:0;border-bottom:1px solid #eee;">
+        ${kpis.map((k,i) => `
+          ${i===3 ? '<div style="background:#eee;"></div>' : ''}
+          <div style="padding:16px 14px;text-align:center;${i<3?'border-right:1px solid #eee;':''}">
+            <div style="font-size:10px;color:#999;margin-bottom:4px;">${k.label}</div>
+            <div style="font-size:18px;font-weight:800;color:${k.color};">${k.val}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Diagnosis -->
+      <div style="padding:20px 24px;border-bottom:1px solid #eee;" id="cardDiagSlot">
+        <div style="font-size:11px;color:#999;letter-spacing:1px;margin-bottom:10px;">${isEn?'SYSTEM DIAGNOSIS':'系统诊断'}</div>
+      </div>
+
+      <!-- Attribution -->
+      ${attrClone ? `<div style="padding:20px 24px;border-bottom:1px solid #eee;" id="cardAttrSlot">
+        <div style="font-size:11px;color:#999;letter-spacing:1px;margin-bottom:10px;">${isEn?'TRADE ATTRIBUTION':'交易归因'}</div>
+      </div>` : ''}
+
+      <!-- Footer watermark -->
+      <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:#fafafa;">
+        <div style="font-size:11px;color:#bbb;">win-rate.vercel.app</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:20px;height:20px;background:#00b96b;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-size:10px;">W</span>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:#111;">胜率 WinRate</span>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(card);
+
+    // Inject diagnosis clone
+    const diagSlot = card.querySelector('#cardDiagSlot');
+    if (diagSlot && diagClone) diagSlot.appendChild(diagClone);
+
+    // Inject attribution clone
+    const attrSlot = card.querySelector('#cardAttrSlot');
+    if (attrSlot && attrClone) attrSlot.appendChild(attrClone);
+
+    // Wait for render
+    await new Promise(r => setTimeout(r, 200));
+
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    document.body.removeChild(card);
+
+    // Show preview modal
+    const imgData = canvas.toDataURL('image/png');
+    showShareModal(imgData, isEn);
+
+  } catch(e) {
+    console.error(e);
+    alert(isEn ? 'Failed to generate image. Please try again.' : '生成失败，请重试。');
+  } finally {
+    if (btn) { btn.disabled = false; btnTxt.textContent = isEn ? 'Share Card' : '生成长图'; }
+  }
+}
+
+function showShareModal(imgData, isEn) {
+  const existing = document.getElementById('shareModal');
+  if (existing) existing.remove();
+
+  const m = document.createElement('div');
+  m.id = 'shareModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:950;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:800;">${isEn?'Share Card':'分享长图'}</div>
+        <button onclick="document.getElementById('shareModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">×</button>
+      </div>
+      <img src="${imgData}" style="width:100%;border-radius:12px;border:1px solid #eee;margin-bottom:16px;" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <a href="${imgData}" download="WinRate-${new Date().toISOString().slice(0,10)}.png"
+          style="display:block;text-align:center;padding:11px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
+          ⬇️ ${isEn?'Download PNG':'下载图片'}
+        </a>
+        <button onclick="document.getElementById('shareModal').remove()"
+          style="padding:11px;background:#f5f5f5;color:#555;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+          ${isEn?'Close':'关闭'}
+        </button>
+      </div>
+      <div style="font-size:11px;color:#bbb;text-align:center;margin-top:10px;">${isEn?'Long-press to save on mobile':'手机端长按图片保存'}</div>
+    </div>
+  `;
+  document.body.appendChild(m);
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
 }
 
 function openUpgradeModal() {
