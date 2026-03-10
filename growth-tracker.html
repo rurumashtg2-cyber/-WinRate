@@ -1503,22 +1503,29 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
   const topWins   = wins.slice(0, 3);
   const topLosses = losses.slice(0, 3);
   const maxPct = Math.max(...done.map(t => Math.abs(t.pct)), 1);
-  const worstTrade = losses.length ? [...losses].sort((a,b) => Math.abs(b.net)-Math.abs(a.net))[0] : null;
 
-  // ── single root cause, consistent with system diagnosis ──
-  // Priority: negative expectancy → find THE worst offender
-  // Positive expectancy → find the real strength
+  // For diagnosis: closed trades only (stable, not affected by market moves)
+  const closedOnly = lastTrades.filter(t => t.status==='盈利' || t.status==='亏损');
+  const closedWins = closedOnly.filter(t => t.status==='盈利');
+  const closedLoss = closedOnly.filter(t => t.status==='亏损');
+  const closedAvgNet = closedOnly.length ? closedOnly.reduce((s,t)=>s+Math.abs(t.net),0)/closedOnly.length : 0;
+
+  // For "biggest drag" in summary: split open vs closed
+  const worstClosed = closedLoss.length ? [...closedLoss].sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))[0] : null;
+  const worstOpen   = losses.filter(t=>t.isOpen).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))[0] || null;
+  const worstTrade  = worstClosed || worstOpen;
+
+  // ── single root cause — based on CLOSED trades only ──
 
   let diagnosis = null;
 
-  if (sysEx <= 0 && losses.length > 0) {
-    // Find the single biggest drag
-    const worstByNet  = [...losses].sort((a,b) => Math.abs(b.net) - Math.abs(a.net))[0];
-    const worstByPct  = losses[0]; // already sorted by pct asc
+  if (sysEx <= 0 && closedLoss.length > 0) {
+    const worstByNet  = [...closedLoss].sort((a,b) => Math.abs(b.net) - Math.abs(a.net))[0];
+    const worstByPct  = closedLoss[0];
 
     // Case A: one trade dominates net loss
-    if (Math.abs(worstByNet.net) > avgNet * 2.2) {
-      const timesOver = (Math.abs(worstByNet.net) / avgNet).toFixed(1);
+    if (Math.abs(worstByNet.net) > closedAvgNet * 2.2) {
+      const timesOver = (Math.abs(worstByNet.net) / closedAvgNet).toFixed(1);
       diagnosis = {
         icon: '⚠️', color: '#d97706',
         bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)',
@@ -1528,10 +1535,10 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
           : `<strong>${worstByNet.sym}</strong> 亏了 <strong>${Math.abs(worstByNet.pct).toFixed(1)}%</strong>，是其他交易平均亏损的 ${timesOver} 倍。你其他的交易没问题，就是这一笔拖垮了整体。<br><br>→ <strong>下次进场前：</strong>先写下「跌到多少价格我就出」，写下来再买，不要买了再想。`
       };
     }
-    // Case B: P/L ratio is the killer (losses too big vs wins)
+    // Case B: P/L ratio is the killer
     else if (sysPl < 1.0) {
-      const worstSym = losses[0].sym;
-      const worstPct = Math.abs(losses[0].pct).toFixed(1);
+      const worstSym = closedLoss[0].sym;
+      const worstPct = Math.abs(closedLoss[0].pct).toFixed(1);
       diagnosis = {
         icon: '🔴', color: 'var(--red)',
         bg: 'rgba(232,54,79,0.06)', border: 'rgba(232,54,79,0.18)',
@@ -1543,15 +1550,15 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
     }
     // Case C: win rate is the killer
     else if (sysWr < 45) {
-      const lossCount = losses.length;
-      const winCount = wins.length;
+      const lossCount = closedLoss.length;
+      const winCount = closedWins.length;
       diagnosis = {
         icon: '🔴', color: 'var(--red)',
         bg: 'rgba(232,54,79,0.06)', border: 'rgba(232,54,79,0.18)',
         title: isEn ? 'You\'re losing more trades than you\'re winning' : '你亏损的次数比盈利的次数多',
         body: isEn
-          ? `Out of <strong>${done.length} trades</strong>, only <strong>${winCount} made money</strong> and <strong>${lossCount} lost</strong>. The problem isn't how much you make or lose per trade — it's that you're entering too many bad trades.<br><br>→ <strong>This week:</strong> before entering any trade, ask yourself "would I be comfortable holding this overnight?" If the answer is no, skip it.`
-          : `<strong>${done.length} 笔交易</strong>里，只有 <strong>${winCount} 笔赚钱</strong>，<strong>${lossCount} 笔亏钱</strong>。问题不在于每笔赚多少亏多少，而是进场的次数太多、质量太低。<br><br>→ <strong>本周开始：</strong>每次想进场时先问自己「这笔我有把握吗？」没把握就不进，宁可少做，不要乱做。`
+          ? `Out of <strong>${closedOnly.length} closed trades</strong>, only <strong>${winCount} made money</strong> and <strong>${lossCount} lost</strong>. The problem isn't how much you make or lose per trade — it's that you're entering too many bad trades.<br><br>→ <strong>This week:</strong> before entering any trade, ask yourself "would I be comfortable holding this overnight?" If the answer is no, skip it.`
+          : `<strong>${closedOnly.length} 笔已完结交易</strong>里，只有 <strong>${winCount} 笔赚钱</strong>，<strong>${lossCount} 笔亏钱</strong>。问题不在于每笔赚多少亏多少，而是进场的次数太多、质量太低。<br><br>→ <strong>本周开始：</strong>每次想进场时先问自己「这笔我有把握吗？」没把握就不进，宁可少做，不要乱做。`
       };
     }
     // Case D: general negative expectancy
@@ -1636,7 +1643,10 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
 
       <!-- LEFT: single root cause -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'🔍 ROOT CAUSE':'🔍 根本原因'}</div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;">${isEn?'🔍 ROOT CAUSE':'🔍 根本原因'}</div>
+          <div style="font-size:10px;color:var(--t3);background:var(--bg);border-radius:4px;padding:2px 6px;">${isEn?`based on ${closedOnly.length} closed trades`:`基于 ${closedOnly.length} 笔已完结交易`}</div>
+        </div>
         ${diagnosis ? `
           <div style="background:${diagnosis.bg};border:1px solid ${diagnosis.border};border-radius:10px;padding:13px 14px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
@@ -1645,11 +1655,14 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
             </div>
             <div style="font-size:12px;color:var(--t2);line-height:1.75;">${diagnosis.body}</div>
           </div>` : ''}
+        <div style="font-size:10px;color:var(--t3);margin-top:8px;padding:6px 8px;background:var(--bg);border-radius:6px;line-height:1.6;">
+          💡 ${isEn?'Diagnosis uses <strong>closed trades only</strong> — open positions excluded to avoid unrealized P&L distorting your system assessment.':'根因分析仅基于<strong>已完结交易</strong>，持仓浮盈浮亏不计入，避免未实现盈亏扭曲系统判断。'}
+        </div>
       </div>
 
       <!-- RIGHT: summary stats -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'📊 SUMMARY':'📊 本批次总结'}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;margin-bottom:10px;">${isEn?'📊 SUMMARY (incl. open positions)':'📊 本批次总结（含持仓浮动）'}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
           <div style="background:rgba(0,185,107,0.05);border:1px solid rgba(0,185,107,0.15);border-radius:10px;padding:12px;text-align:center;">
             <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">✅ ${isEn?'WINNERS':'盈利'}</div>
@@ -1662,16 +1675,25 @@ function buildAttribution(isEn, sysEx, sysWr, sysPl) {
             <div style="font-size:11px;color:var(--red);margin-top:2px;">-${avgLoss.toFixed(1)}% ${isEn?'avg':'均亏'}</div>
           </div>
         </div>
-        ${worstTrade ? `
-        <div style="background:rgba(232,54,79,0.04);border:1px solid rgba(232,54,79,0.15);border-radius:10px;padding:11px 13px;">
-          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">${isEn?'⚠️ BIGGEST DRAG':'⚠️ 拖累最大'}</div>
+        ${worstClosed ? `
+        <div style="background:rgba(232,54,79,0.04);border:1px solid rgba(232,54,79,0.15);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">⚠️ ${isEn?'BIGGEST CLOSED LOSS':'已完结最大拖累'}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstTrade.sym}</span>
-            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--red);">${worstTrade.pct.toFixed(2)}%</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstClosed.sym}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--red);">${worstClosed.pct.toFixed(2)}%</span>
           </div>
-          <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Net loss: -$${Math.abs(worstTrade.net).toFixed(2)}`:`净亏损：-$${Math.abs(worstTrade.net).toFixed(2)}`}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Net loss: -$${Math.abs(worstClosed.net).toFixed(2)}`:`净亏损：-$${Math.abs(worstClosed.net).toFixed(2)}`}</div>
         </div>` : ''}
-        <div style="font-size:11px;color:var(--t3);margin-top:10px;text-align:right;">
+        ${worstOpen ? `
+        <div style="background:rgba(217,119,6,0.04);border:1px solid rgba(217,119,6,0.15);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:5px;">📍 ${isEn?'BIGGEST OPEN LOSS (unrealized)':'持仓最大浮亏（未实现）'}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;">${worstOpen.sym}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--yellow);">${worstOpen.pct.toFixed(2)}%</span>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:3px;">${isEn?`Unrealized: -$${Math.abs(worstOpen.net).toFixed(2)}`:`浮亏：-$${Math.abs(worstOpen.net).toFixed(2)}`}</div>
+        </div>` : ''}
+        <div style="font-size:11px;color:var(--t3);margin-top:4px;text-align:right;">
           ${isEn?'Per-symbol breakdown ↓ below':'个股详细分析见下方 ↓'}
         </div>
       </div>
