@@ -272,47 +272,43 @@ tbody tr:hover { background:var(--bg); }
 .fi-label { font-size:11px; color:var(--t3); letter-spacing:0.8px; display:block; margin-bottom:4px; }
 
 /* ── HERO BANNER ── */
-.hero {
+/* ── HERO BANNER CAROUSEL ── */
+.hero-carousel {
   background: linear-gradient(160deg, #f0fdf7 0%, #e8f8f0 30%, #eef6ff 70%, #f5f0ff 100%);
   border-bottom: 1px solid rgba(0,185,107,0.12);
-  padding: 36px 40px 48px;
-  display: flex;
-  align-items: center;
-  gap: 40px;
   position: relative;
   overflow: hidden;
 }
-
-/* subtle dot grid */
-.hero::before {
+.hero-carousel::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image: radial-gradient(circle, rgba(0,185,107,0.12) 1px, transparent 1px);
   background-size: 28px 28px;
   pointer-events: none;
+  z-index: 0;
 }
-
-/* fade to white at bottom */
-.hero::after {
+.hero-carousel::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 40px;
   background: linear-gradient(to bottom, transparent, #f5f7fa);
   pointer-events: none;
+  z-index: 2;
 }
-
-.hero-bg-candles {
-  position: absolute;
-  right: -20px; top: 0; bottom: 0;
-  width: 42%;
-  opacity: 0.12;
-  pointer-events: none;
-  overflow: hidden;
+.hero-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+  position: relative;
+  z-index: 1;
 }
-
-.hero-inner {
+.hero-slide {
+  min-width: 100%;
+  padding: 36px 40px 52px;
+  box-sizing: border-box;
+}
+.hero-slide-inner {
   max-width: 1020px;
   margin: 0 auto;
   width: 100%;
@@ -320,8 +316,15 @@ tbody tr:hover { background:var(--bg); }
   align-items: center;
   gap: 40px;
   padding: 0 28px;
-  position: relative;
-  z-index: 1;
+}
+.hero-bg-candles {
+  position: absolute;
+  right: -20px; top: 0; bottom: 0;
+  width: 42%;
+  opacity: 0.12;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
 }
 .hero-left { flex: 1; min-width: 0; }
 .hero-tag {
@@ -334,7 +337,7 @@ tbody tr:hover { background:var(--bg); }
   font-family: 'Syne', sans-serif; font-weight: 800;
   font-size: 24px; line-height: 1.35; margin-bottom: 10px; color: #0f1923;
 }
-.hero-title em { 
+.hero-title em {
   color: var(--green); font-style: normal;
   background: linear-gradient(135deg, #00b96b, #00d4a0);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -365,8 +368,56 @@ tbody tr:hover { background:var(--bg); }
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
 }
 .hero-formula strong { color: var(--green); }
+/* dots nav */
+.hero-dots {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; z-index: 3;
+}
+.hero-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(0,185,107,0.25); cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+  border: none; padding: 0;
+}
+.hero-dot.active {
+  background: var(--green); transform: scale(1.3);
+}
+/* slide-specific accent colors */
+.hero-slide[data-slide="1"] .hero-tag { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.25); color: #1d6ae5; }
+.hero-slide[data-slide="2"] .hero-tag { background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.25); color: #7c3aed; }
+.hero-slide[data-slide="3"] .hero-tag { background: rgba(0,185,107,0.1); border-color: rgba(0,185,107,0.25); color: #00955a; }
+.hero-slide[data-slide="4"] .hero-tag { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.25); color: #b45309; }
+.hero-slide[data-slide="5"] .hero-tag { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.25); color: #b91c1c; }
+/* roadmap list */
+.roadmap-list {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 14px;
+}
+.roadmap-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: var(--t2); line-height: 1.6;
+}
+.roadmap-badge {
+  flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 2px 8px; border-radius: 10px; margin-top: 2px;
+  background: rgba(0,185,107,0.1); color: #00955a; border: 1px solid rgba(0,185,107,0.2);
+}
+/* source blocks */
+.source-blocks {
+  display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+}
+.source-block {
+  background: rgba(255,255,255,0.75); border-radius: 12px;
+  padding: 12px 16px; flex: 1; min-width: 140px;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.source-block-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  margin-bottom: 4px; text-transform: uppercase;
+}
+.source-block-desc { font-size: 12px; color: var(--t2); line-height: 1.5; }
 @media(max-width:720px){
-  .hero { flex-direction: column; padding: 24px 16px 36px; gap: 20px; }
+  .hero-slide { padding: 24px 16px 48px; }
   .hero-right { display: none; }
 }
 
@@ -598,25 +649,6 @@ tbody tr:hover { background:var(--bg); }
 
   <!-- 4 KPI -->
   <div id="kpiRow"></div>
-
-  <!-- AI 智能复盘 -->
-  <div id="aiReviewSection" style="display:none;margin-bottom:20px;">
-    <div class="card" id="aiReviewCard">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-        <div style="width:30px;height:30px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span style="color:#fff;font-size:15px;">✦</span>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:var(--text);letter-spacing:0.5px;" id="aiReviewTitle">AI 智能复盘</div>
-          <div style="font-size:11px;color:var(--t3);" id="aiReviewSubtitle">基于你的真实交易数据生成个性化分析</div>
-        </div>
-        <button id="aiReviewBtn" onclick="runAIReview()" style="margin-left:auto;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">
-          生成复盘
-        </button>
-      </div>
-      <div id="aiReviewBody" style="display:none;"></div>
-    </div>
-  </div>
 
   <!-- 诊断 + 成长曲线 -->
   <div class="g2" style="margin-bottom:16px;margin-top:4px;">
@@ -1895,142 +1927,8 @@ function drawInsight() {
     attrRow.style.display = 'none';
   }
 
-  // Show AI review section whenever there's data
-  showAISection();
 }
 
-// ── AI 智能复盘 ───────────────────────────────────────
-function showAISection() {
-  if (!D.length || !lastTrades || !lastTrades.length) return;
-  const sec = document.getElementById('aiReviewSection');
-  const btn = document.getElementById('aiReviewBtn');
-  const title = document.getElementById('aiReviewTitle');
-  const sub = document.getElementById('aiReviewSubtitle');
-  if (!sec) return;
-  sec.style.display = '';
-  const isEn = lang === 'en';
-  if (title) title.textContent = isEn ? 'AI Trade Review' : 'AI 智能复盘';
-  if (sub) sub.textContent = isEn ? 'Personalised analysis based on your real trade data' : '基于你的真实交易数据生成个性化分析';
-  if (btn) btn.textContent = isEn ? 'Generate Review' : '生成复盘';
-}
-
-async function runAIReview() {
-  if (!D.length || !lastTrades) return;
-  const isEn = lang === 'en';
-  const btn = document.getElementById('aiReviewBtn');
-  const body = document.getElementById('aiReviewBody');
-  if (!btn || !body) return;
-
-  // --- Build data snapshot ---
-  const lat = D[D.length - 1];
-  const sc = score(lat);
-  const closed = lastTrades.filter(t => t.status === '盈利' || t.status === '亏损');
-  const wins = closed.filter(t => t.status === '盈利');
-  const losses = closed.filter(t => t.status === '亏损');
-  const avgWin = wins.length ? (wins.reduce((s,t)=>s+t.pct,0)/wins.length).toFixed(2) : 0;
-  const avgLoss = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.pct,0)/losses.length).toFixed(2) : 0;
-
-  // Top 3 winners and losers
-  const top3W = [...wins].sort((a,b)=>b.pct-a.pct).slice(0,3).map(t=>`${t.sym} +${t.pct.toFixed(2)}%`).join(', ') || 'N/A';
-  const top3L = [...losses].sort((a,b)=>a.pct-b.pct).slice(0,3).map(t=>`${t.sym} ${t.pct.toFixed(2)}%`).join(', ') || 'N/A';
-
-  // Symbols with multiple losses (possible pattern)
-  const lossCount = {};
-  losses.forEach(t => { lossCount[t.sym] = (lossCount[t.sym]||0)+1; });
-  const repeatLosers = Object.entries(lossCount).filter(([,c])=>c>=2).map(([s,c])=>`${s}(${c}次)`).join(', ') || '无';
-
-  const prompt = isEn ? `
-You are a professional trading coach reviewing a trader's performance data. Be direct, specific, and encouraging but honest.
-
-TRADER DATA:
-- Win Rate: ${lat.胜率.toFixed(1)}%
-- P/L Ratio: ${lat.盈亏比.toFixed(2)}
-- Expectancy: ${(lat.期望值/100).toFixed(3)} R per trade
-- Overall Score: ${sc}/100
-- Total Closed Trades: ${closed.length} (${wins.length} wins, ${losses.length} losses)
-- Avg Win: +${avgWin}%  |  Avg Loss: -${avgLoss}%
-- Top 3 Winners: ${top3W}
-- Top 3 Losers: ${top3L}
-- Stocks with repeated losses: ${repeatLosers}
-
-Write a concise trade review in 3 sections:
-1. **Current State** (2-3 sentences): What does this data tell us? Is this a positive or negative expectancy system?
-2. **Main Problem** (2-3 sentences): What is the single biggest issue holding back profitability? Be specific with numbers.
-3. **Action Plan** (3 bullet points): Concrete, actionable steps the trader should take in the next 30 days.
-
-Tone: Like a mentor talking to a student — direct, warm, constructive. No fluff.
-Format: Use plain text with bold section headers. Keep it under 250 words.
-` : `
-你是一位专业的交易教练，正在复盘一位交易者的数据。请直接、具体、诚实，但保持鼓励的语气。
-
-交易者数据：
-- 胜率：${lat.胜率.toFixed(1)}%
-- 盈亏比：${lat.盈亏比.toFixed(2)}
-- 期望值：${(lat.期望值/100).toFixed(3)} R / 笔
-- 综合评分：${sc} / 100
-- 已完结交易：${closed.length} 笔（盈利 ${wins.length} 笔，亏损 ${losses.length} 笔）
-- 均盈：+${avgWin}%　|　均亏：-${avgLoss}%
-- 盈利前三：${top3W}
-- 亏损前三：${top3L}
-- 多次亏损的标的：${repeatLosers}
-
-请用口语化中文写一份简洁的交易复盘，分三个部分：
-1. **现状解读**（2-3句）：这份数据说明了什么？这套系统目前是正期望还是负期望？
-2. **核心问题**（2-3句）：影响盈利的最关键问题是什么？结合数字具体说明。
-3. **行动计划**（3条）：接下来30天内可以立刻执行的具体改进步骤。
-
-语气：像一个导师跟学生说话——直接、真诚、有温度，不废话。
-格式：纯文字，加粗小标题。总字数控制在250字以内。
-`;
-
-  // --- UI: loading state ---
-  btn.disabled = true;
-  btn.textContent = isEn ? 'Generating…' : '生成中…';
-  body.style.display = 'block';
-  body.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;padding:16px 0 8px;color:var(--t3);font-size:13px;">
-      <div class="ai-spinner"></div>
-      <span>${isEn ? 'Analysing your trades…' : '正在分析你的交易数据…'}</span>
-    </div>`;
-
-  try {
-    const res = await fetch('/api/ai-review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    const text = (data.content || []).map(b => b.text || '').join('');
-    if (!text) throw new Error('empty');
-
-    // Render markdown-like: bold and bullets
-    const html = text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^[•\-]\s+(.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul style="margin:6px 0 6px 16px;padding:0;">${m}</ul>`)
-      .split('\n').map(line => line.startsWith('<') ? line : `<p style="margin:6px 0;">${line}</p>`).join('');
-
-    body.innerHTML = `
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
-        <div style="font-size:13px;line-height:1.8;color:var(--text);">${html}</div>
-        <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span style="font-size:11px;color:var(--t3);">✦ ${isEn ? 'Generated by Claude AI' : 'Claude AI 生成'} · ${new Date().toLocaleDateString(isEn?'en-GB':'zh-CN')}</span>
-          <button onclick="runAIReview()" style="font-size:11px;color:var(--t3);background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-family:inherit;">
-            ${isEn ? '↺ Regenerate' : '↺ 重新生成'}
-          </button>
-        </div>
-      </div>`;
-  } catch(e) {
-    body.innerHTML = `<div style="color:var(--red);font-size:12px;padding:10px 0;">${isEn ? 'Failed to generate. Please try again.' : '生成失败，请重试。'}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = isEn ? 'Generate Review' : '生成复盘';
-  }
-}
 function drawLine() {
   const svg = document.getElementById('lineChart');
   if (!svg) return;
