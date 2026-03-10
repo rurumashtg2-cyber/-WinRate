@@ -2378,7 +2378,21 @@ function readFile(file) {
     try {
       let rows=[];
       if(file.name.toLowerCase().endsWith('.csv')){rows=parseCSV(e.target.result);}
-      else{const wb=XLSX.read(e.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const rawArr=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});rows=parseIBKRSheet(rawArr);}
+      else{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        // Try all sheets, use the first one that yields rows
+        for(const sn of wb.SheetNames){
+          const ws=wb.Sheets[sn];
+          const rawArr=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+          const parsed=parseIBKRSheet(rawArr);
+          if(parsed.length>0){rows=parsed;break;}
+        }
+        if(!rows.length){
+          // absolute fallback: standard json parse of first sheet
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        }
+      }
       analyze(rows);
     } catch(err){alert('解析失败：'+err.message);}
   };
