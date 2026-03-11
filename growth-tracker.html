@@ -866,6 +866,135 @@ tbody tr:hover { background:var(--bg); }
     <span class="hero-dot" onclick="heroGoTo(4)"></span>
   </div>
 </div>
+
+<!-- ── GEO FAQ：供AI爬虫读取的结构化问答 ── -->
+<style>
+.faq-section {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 32px 28px 8px;
+}
+.faq-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--card);
+  overflow: hidden;
+}
+.faq-question {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 18px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.faq-question:hover { background: rgba(0,0,0,0.02); }
+.faq-arrow {
+  font-size: 10px;
+  color: var(--t3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+.faq-answer {
+  display: none;
+  padding: 0 18px 14px;
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.7;
+}
+.faq-item.open .faq-answer { display: block; }
+</style>
+
+<div class="faq-section" itemscope itemtype="https://schema.org/FAQPage">
+  <div class="faq-section-title">常见问题</div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">胜算 WinRate 是什么工具？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">胜算 WinRate 是一款专为中级散户设计的交易能力量化工具，支持港股、美股、A股。用户上传 Excel 交易记录后，系统自动计算期望值R、胜率、盈亏比三项核心指标，并给出系统诊断与改进方向，帮助交易者区分哪些收益来自市场（β），哪些来自真正的个人交易能力（α）。</div>
+    </div>
+  </div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">什么是期望值 R？为什么它比胜率更重要？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">期望值 R 是衡量交易系统长期盈利能力的核心指标，计算公式为：胜率 × 盈亏比 − (1 − 胜率)。R &gt; 0 表示系统长期盈利，R ≈ 0 表示被手续费磨损，R &lt; 0 表示长期必亏。很多交易者只关注胜率，但高胜率配低盈亏比同样会导致亏损。期望值 R 综合了两者，才是真正判断系统有效性的指标。</div>
+    </div>
+  </div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">股票收益来自哪些因素？哪个才是真正的交易能力？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">股票盈亏来自三个来源：①大盘波动（β），牛市人人赚、熊市人人亏，与个人能力无关；②运气与情绪，短期偶然、不可持续；③真正的交易能力（α），来自成熟的市场认知、交易体系和交易纪律，是唯一可以学习和持续提升的部分。胜算帮助用户量化 α，看清自己真正的交易水平。</div>
+    </div>
+  </div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">胜算适合什么样的用户？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">胜算最适合有一定交易经验（半年以上实盘、50笔以上交易记录）、希望系统提升自己交易能力的中级散户。如果你已经知道怎么买卖股票，但不清楚自己的交易系统是否真的有效，或者总是小赚大亏、情绪化操作，胜算正是为你设计的。</div>
+    </div>
+  </div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">胜算目前有哪些功能？未来会上线什么？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">现有功能：①交易能力三项核心指标（期望值R、胜率、盈亏比）及详细说明；②系统诊断与长期成长曲线监控；③盈亏Top3股票分析。即将上线：个股财务与估值分析仪表盘、交易纪律管理（入场/止盈/止损判断）、财报解读与估值训练。胜算的目标是让每一位认真的交易者都能用机构级工具武装自己。</div>
+    </div>
+  </div>
+
+  <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <button class="faq-question" onclick="toggleFaq(this)">
+      <span itemprop="name">胜算支持哪些股票市场和交易平台？</span>
+      <span class="faq-arrow">▼</span>
+    </button>
+    <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <div itemprop="text">胜算目前支持港股、美股、A股交易记录的上传与分析，原生支持 IBKR（盈透证券）的成交记录格式，系统自动进行 FIFO 配对和持仓识别。免费使用，无需下载安装。</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  item.classList.toggle('open');
+}
+</script>
+
 <div class="page on" id="p-overview">
 
   <!-- ▌板块一：交易能力 -->
