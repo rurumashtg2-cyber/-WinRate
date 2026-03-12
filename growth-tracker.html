@@ -5229,19 +5229,24 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
   if (!grp) return;
 
   const tickers = [
-    // group, name, symbol
     ['美股指数', '纳指', '^IXIC'],
     ['美股指数', '道指', '^DJI'],
     ['美股指数', '标普', '^GSPC'],
-    ['美股指数', '罗素', '^RUT'],
-    ['期货/商品', '标普期货', 'ES=F'],
-    ['期货/商品', 'WTI原油', 'CL=F'],
-    ['期货/商品', '黄金', 'GC=F'],
-    ['美元/债券', '美元指数', 'DX-Y.NYB'],
-    ['美元/债券', '美债10Y', '^TNX'],
-    ['美债/风险', '美债2Y', '^IRX'],
-    ['美债/风险', 'VIX恐慌', '^VIX'],
-    ['美债/风险', 'VVIX', '^VVIX'],
+    ['美股指数', '罗素2000', '^RUT'],
+    ['美股期货', '道指期货', 'YM=F'],
+    ['美股期货', '纳指期货', 'NQ=F'],
+    ['美股期货', '标普期货', 'ES=F'],
+    ['美股期货', 'WTI原油', 'CL=F'],
+    ['美元/汇率', '美元指数', 'DX-Y.NYB'],
+    ['美元/汇率', '美元/日元', 'JPY=X'],
+    ['美元/汇率', '离岸人民币', 'CNH=X'],
+    ['美债收益率', '美债10Y', '^TNX'],
+    ['美债收益率', '美债5Y', '^FVX'],
+    ['美债收益率', '美债2Y', '^TYX'],
+    ['风险/避险', 'VIX', '^VIX'],
+    ['风险/避险', 'VVIX', '^VVIX'],
+    ['风险/避险', '黄金', 'GC=F'],
+    ['风险/避险', '白银', 'SI=F'],
   ];
 
   const symbols = tickers.map(t => t[2]).join(',');
@@ -5258,8 +5263,10 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
       if (!groups[gName]) groups[gName] = [];
       const q = data[sym];
       let val = '—', chg = '', chgCls = 'flat';
-      if (q && q.end != null) {
-        const price = q.end;
+      const closeArr = q && Array.isArray(q.close) ? q.close.filter(v => v != null) : [];
+      const price0 = closeArr.length ? closeArr[closeArr.length - 1] : null;
+      if (q && price0 != null) {
+        const price = price0;
         const prev  = q.chartPreviousClose || q.previousClose;
         val = price >= 10000 ? price.toLocaleString('en-US', {maximumFractionDigits: 0})
             : price >= 100   ? price.toFixed(2)
@@ -5273,7 +5280,7 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
       groups[gName].push({ name, val, chg, chgCls });
     });
 
-    const groupOrder = ['美股指数','期货/商品','美元/债券','美债/风险'];
+    const groupOrder = ['美股指数','美股期货','美元/汇率','美债收益率','风险/避险'];
     grp.innerHTML = groupOrder.map(gName => {
       const items = groups[gName] || [];
       return '<div class="cal-banner-group">' +
