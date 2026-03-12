@@ -5252,24 +5252,22 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    // Build group map
+    // Build group map — data[sym].end = current price, data[sym].chartPreviousClose = prev close
     const groups = {};
     tickers.forEach(([gName, name, sym]) => {
       if (!groups[gName]) groups[gName] = [];
-      const spark = data.spark?.result?.find(r => r.symbol === sym);
+      const q = data[sym];
       let val = '—', chg = '', chgCls = 'flat';
-      if (spark && spark.response && spark.response[0]) {
-        const quotes = spark.response[0].meta;
-        const price = quotes.regularMarketPrice;
-        const prev  = quotes.chartPreviousClose || quotes.previousClose;
-        if (price != null) {
-          val = price >= 1000 ? price.toLocaleString('en-US', {maximumFractionDigits:0})
-                              : price.toFixed(price < 10 ? 2 : 2);
-          if (prev) {
-            const pct = ((price - prev) / prev * 100);
-            chg = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-            chgCls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'flat';
-          }
+      if (q && q.end != null) {
+        const price = q.end;
+        const prev  = q.chartPreviousClose || q.previousClose;
+        val = price >= 10000 ? price.toLocaleString('en-US', {maximumFractionDigits: 0})
+            : price >= 100   ? price.toFixed(2)
+            :                  price.toFixed(2);
+        if (prev) {
+          const pct = (price - prev) / prev * 100;
+          chg = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+          chgCls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'flat';
         }
       }
       groups[gName].push({ name, val, chg, chgCls });
