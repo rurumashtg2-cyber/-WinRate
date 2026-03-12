@@ -1337,18 +1337,25 @@ body.cal-active .faq-section {
 
 /* ── 行情指标带 Banner ── */
 .cal-banner {
-  background: linear-gradient(160deg, #f0fdf7 0%, #e8f8f0 30%, #eef6ff 70%, #f5f0ff 100%);
-  border-bottom: 1px solid rgba(0,185,107,0.12);
+  background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 40%, #0a2240 70%, #0d1f3c 100%);
+  border-bottom: 1px solid rgba(0,185,107,0.2);
   position: relative; overflow: hidden;
 }
 .cal-banner::before {
   content: ''; position: absolute; inset: 0;
-  background-image: radial-gradient(circle, rgba(0,185,107,0.09) 1px, transparent 1px);
-  background-size: 28px 28px; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,185,107,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,185,107,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
 }
 .cal-banner::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 28px;
-  background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none;
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,185,107,0.4), transparent);
+  pointer-events: none;
+}
+.cal-banner-canvas {
+  position: absolute; inset: 0; opacity: 0.15; pointer-events: none;
 }
 .cal-banner-inner {
   max-width: 1020px; margin: 0 auto; padding: 16px 28px 24px;
@@ -1362,28 +1369,28 @@ body.cal-active .faq-section {
 .cal-banner-group:first-child { padding-left: 0; }
 .cal-banner-group:last-child { border-right: none; padding-right: 0; }
 .cal-banner-group-title {
-  font-size: 9px; font-weight: 700; color: var(--t3);
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.35);
   letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 7px;
 }
 .cal-banner-item {
   display: flex; align-items: center; justify-content: space-between;
   gap: 4px; margin-bottom: 4px;
 }
-.cal-banner-name { font-size: 11px; color: var(--t2); white-space: nowrap; }
+.cal-banner-name { font-size: 11px; color: rgba(255,255,255,0.6); white-space: nowrap; }
 .cal-banner-right { display: flex; align-items: center; gap: 4px; }
 .cal-banner-val {
   font-family: 'DM Mono', monospace; font-size: 11px;
-  font-weight: 600; color: var(--text);
+  font-weight: 600; color: rgba(255,255,255,0.9);
 }
 .cal-banner-chg {
   font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600;
   padding: 1px 4px; border-radius: 3px; white-space: nowrap;
 }
-.cal-banner-chg.up { color: var(--green); background: rgba(0,185,107,0.08); }
-.cal-banner-chg.dn { color: var(--red); background: rgba(232,54,79,0.08); }
-.cal-banner-chg.flat { color: var(--t3); }
+.cal-banner-chg.up { color: #00e676; background: rgba(0,230,118,0.12); }
+.cal-banner-chg.dn { color: #ff5252; background: rgba(255,82,82,0.12); }
+.cal-banner-chg.flat { color: rgba(255,255,255,0.3); }
 .cal-banner-status {
-  font-size: 10px; color: var(--t3); text-align: right; margin-top: 6px;
+  font-size: 10px; color: rgba(255,255,255,0.2); text-align: right; margin-top: 6px;
 }
 
 /* week nav in sidebar */
@@ -1971,9 +1978,9 @@ body.cal-active .faq-section {
 
   <!-- 行情指标带 Banner: hidden until data loads -->
   <div class="cal-banner" id="calBanner" style="display:none;">
+    <canvas class="cal-banner-canvas" id="calBannerCanvas"></canvas>
     <div class="cal-banner-inner">
       <div class="cal-banner-groups" id="calBannerGroups"></div>
-      <div class="cal-banner-status" id="calBannerStatus"></div>
     </div>
   </div>
 
@@ -5243,6 +5250,7 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
     ['美债收益率', '美债10Y', '^TNX'],
     ['美债收益率', '美债5Y', '^FVX'],
     ['美债收益率', '美债2Y', '^TYX'],
+    ['美债收益率', '日债10Y', 'JPTBYLD='],
     ['风险/避险', 'VIX', '^VIX'],
     ['风险/避险', 'VVIX', '^VVIX'],
     ['风险/避险', '黄金', 'GC=F'],
@@ -5300,14 +5308,56 @@ window.fetchMarketBanner = async function fetchMarketBanner() {
     // Show banner only when data loaded
     const banner = document.getElementById('calBanner');
     if (banner) banner.style.display = '';
-    const now = new Date();
-    if (sta) sta.textContent = 'Yahoo Finance · ET ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+    drawBannerCandles();
+    // status hidden per design preference
 
   } catch(e) {
     // CORS/network fail — keep banner hidden, no ugly loading state
     const banner = document.getElementById('calBanner');
     if (banner) banner.style.display = 'none';
   }
+}
+
+
+function drawBannerCandles() {
+  const canvas = document.getElementById('calBannerCanvas');
+  if (!canvas) return;
+  const banner = document.getElementById('calBanner');
+  canvas.width  = banner.offsetWidth;
+  canvas.height = banner.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const N = Math.floor(W / 14);
+  // Generate fake candlestick path for decoration
+  let price = 100;
+  const candles = Array.from({length: N}, () => {
+    const open  = price + (Math.random() - 0.5) * 3;
+    const close = open  + (Math.random() - 0.5) * 4;
+    const high  = Math.max(open, close) + Math.random() * 2;
+    const low   = Math.min(open, close) - Math.random() * 2;
+    price = close;
+    return { open, close, high, low };
+  });
+  const allPrices = candles.flatMap(c => [c.high, c.low]);
+  const minP = Math.min(...allPrices), maxP = Math.max(...allPrices);
+  const scaleY = v => H - ((v - minP) / (maxP - minP)) * H * 0.7 - H * 0.15;
+  candles.forEach((candle, i) => {
+    const x = i * 14 + 7;
+    const isUp = candle.close >= candle.open;
+    ctx.strokeStyle = isUp ? 'rgba(0,230,118,0.5)' : 'rgba(255,82,82,0.5)';
+    ctx.fillStyle   = isUp ? 'rgba(0,230,118,0.25)' : 'rgba(255,82,82,0.25)';
+    ctx.lineWidth = 1;
+    // wick
+    ctx.beginPath();
+    ctx.moveTo(x, scaleY(candle.high));
+    ctx.lineTo(x, scaleY(candle.low));
+    ctx.stroke();
+    // body
+    const y1 = scaleY(Math.max(candle.open, candle.close));
+    const y2 = scaleY(Math.min(candle.open, candle.close));
+    ctx.fillRect(x - 4, y1, 8, Math.max(1, y2 - y1));
+    ctx.strokeRect(x - 4, y1, 8, Math.max(1, y2 - y1));
+  });
 }
 
 
