@@ -2124,91 +2124,7 @@ async function initAuth() {
   if (session?.user) {
     await onLogin(session.user);
   } else {
-    D = lo
-// ── Market Banner fetch (Yahoo Finance) ──────────────────────────────────────
-async function fetchMarketBanner() {
-  const grp = document.getElementById('calBannerGroups');
-  const sta = document.getElementById('calBannerStatus');
-  if (!grp) return;
-
-  const tickers = [
-    // group, name, symbol
-    ['美股指数', '纳指', '^IXIC'],
-    ['美股指数', '道指', '^DJI'],
-    ['美股指数', '标普', '^GSPC'],
-    ['美股指数', '罗素', '^RUT'],
-    ['期货/商品', '标普期货', 'ES=F'],
-    ['期货/商品', 'WTI原油', 'CL=F'],
-    ['期货/商品', '黄金', 'GC=F'],
-    ['美元/债券', '美元指数', 'DX-Y.NYB'],
-    ['美元/债券', '美债10Y', '^TNX'],
-    ['美债/风险', '美债2Y', '^IRX'],
-    ['美债/风险', 'VIX恐慌', '^VIX'],
-    ['美债/风险', 'VVIX', '^VVIX'],
-  ];
-
-  const symbols = tickers.map(t => t[2]).join(',');
-  const url = '/api/market?symbols=' + encodeURIComponent(symbols);
-
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    // Build group map
-    const groups = {};
-    tickers.forEach(([gName, name, sym]) => {
-      if (!groups[gName]) groups[gName] = [];
-      const spark = data.spark?.result?.find(r => r.symbol === sym);
-      let val = '—', chg = '', chgCls = 'flat';
-      if (spark && spark.response && spark.response[0]) {
-        const quotes = spark.response[0].meta;
-        const price = quotes.regularMarketPrice;
-        const prev  = quotes.chartPreviousClose || quotes.previousClose;
-        if (price != null) {
-          val = price >= 1000 ? price.toLocaleString('en-US', {maximumFractionDigits:0})
-                              : price.toFixed(price < 10 ? 2 : 2);
-          if (prev) {
-            const pct = ((price - prev) / prev * 100);
-            chg = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-            chgCls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'flat';
-          }
-        }
-      }
-      groups[gName].push({ name, val, chg, chgCls });
-    });
-
-    const groupOrder = ['美股指数','期货/商品','美元/债券','美债/风险'];
-    grp.innerHTML = groupOrder.map(gName => {
-      const items = groups[gName] || [];
-      return '<div class="cal-banner-group">' +
-        '<div class="cal-banner-group-title">' + gName + '</div>' +
-        items.map(it =>
-          '<div class="cal-banner-item">' +
-            '<span class="cal-banner-name">' + it.name + '</span>' +
-            '<span class="cal-banner-right">' +
-              '<span class="cal-banner-val">' + it.val + '</span>' +
-              (it.chg ? '<span class="cal-banner-chg ' + it.chgCls + '">' + it.chg + '</span>' : '') +
-            '</span>' +
-          '</div>'
-        ).join('') +
-      '</div>';
-    }).join('');
-
-    // Show banner only when data loaded
-    const banner = document.getElementById('calBanner');
-    if (banner) banner.style.display = '';
-    const now = new Date();
-    if (sta) sta.textContent = 'Yahoo Finance · ET ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
-
-  } catch(e) {
-    // CORS/network fail — keep banner hidden, no ugly loading state
-    const banner = document.getElementById('calBanner');
-    if (banner) banner.style.display = 'none';
-  }
-}
-
-calLoad();
+    D = localLoad();
     if (!D.length) { D = demoData(); localSave(); }
     renderNavGuest();
     drawAll();
@@ -5305,6 +5221,90 @@ window.go = function(id, el) {
     fetchMarketBanner();
   }
 };
+
+// ── Market Banner fetch (Yahoo Finance) ──────────────────────────────────────
+window.fetchMarketBanner = async function fetchMarketBanner() {
+  const grp = document.getElementById('calBannerGroups');
+  const sta = document.getElementById('calBannerStatus');
+  if (!grp) return;
+
+  const tickers = [
+    // group, name, symbol
+    ['美股指数', '纳指', '^IXIC'],
+    ['美股指数', '道指', '^DJI'],
+    ['美股指数', '标普', '^GSPC'],
+    ['美股指数', '罗素', '^RUT'],
+    ['期货/商品', '标普期货', 'ES=F'],
+    ['期货/商品', 'WTI原油', 'CL=F'],
+    ['期货/商品', '黄金', 'GC=F'],
+    ['美元/债券', '美元指数', 'DX-Y.NYB'],
+    ['美元/债券', '美债10Y', '^TNX'],
+    ['美债/风险', '美债2Y', '^IRX'],
+    ['美债/风险', 'VIX恐慌', '^VIX'],
+    ['美债/风险', 'VVIX', '^VVIX'],
+  ];
+
+  const symbols = tickers.map(t => t[2]).join(',');
+  const url = '/api/market?symbols=' + encodeURIComponent(symbols);
+
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    // Build group map
+    const groups = {};
+    tickers.forEach(([gName, name, sym]) => {
+      if (!groups[gName]) groups[gName] = [];
+      const spark = data.spark?.result?.find(r => r.symbol === sym);
+      let val = '—', chg = '', chgCls = 'flat';
+      if (spark && spark.response && spark.response[0]) {
+        const quotes = spark.response[0].meta;
+        const price = quotes.regularMarketPrice;
+        const prev  = quotes.chartPreviousClose || quotes.previousClose;
+        if (price != null) {
+          val = price >= 1000 ? price.toLocaleString('en-US', {maximumFractionDigits:0})
+                              : price.toFixed(price < 10 ? 2 : 2);
+          if (prev) {
+            const pct = ((price - prev) / prev * 100);
+            chg = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+            chgCls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'flat';
+          }
+        }
+      }
+      groups[gName].push({ name, val, chg, chgCls });
+    });
+
+    const groupOrder = ['美股指数','期货/商品','美元/债券','美债/风险'];
+    grp.innerHTML = groupOrder.map(gName => {
+      const items = groups[gName] || [];
+      return '<div class="cal-banner-group">' +
+        '<div class="cal-banner-group-title">' + gName + '</div>' +
+        items.map(it =>
+          '<div class="cal-banner-item">' +
+            '<span class="cal-banner-name">' + it.name + '</span>' +
+            '<span class="cal-banner-right">' +
+              '<span class="cal-banner-val">' + it.val + '</span>' +
+              (it.chg ? '<span class="cal-banner-chg ' + it.chgCls + '">' + it.chg + '</span>' : '') +
+            '</span>' +
+          '</div>'
+        ).join('') +
+      '</div>';
+    }).join('');
+
+    // Show banner only when data loaded
+    const banner = document.getElementById('calBanner');
+    if (banner) banner.style.display = '';
+    const now = new Date();
+    if (sta) sta.textContent = 'Yahoo Finance · ET ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+
+  } catch(e) {
+    // CORS/network fail — keep banner hidden, no ugly loading state
+    const banner = document.getElementById('calBanner');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
 
 calLoad();
 
