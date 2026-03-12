@@ -575,6 +575,7 @@ tbody tr:hover { background:var(--bg); }
     <div class="tab on" onclick="go('overview',this)">总览</div>
     <div class="tab" onclick="go('upload',this)">上传分析</div>
     <div class="tab" onclick="go('history',this)">历史记录</div>
+    <div class="tab" onclick="go('calendar',this)">行情日历</div>
   </div>
   <div id="navRight" class="user-bar">
     <div class="lang-toggle">
@@ -1124,6 +1125,949 @@ tbody tr:hover { background:var(--bg); }
   <div id="snapList"></div>
 </div>
 
+<!-- ═══════════════ CALENDAR PAGE ═══════════════ -->
+<div class="page" id="p-calendar">
+
+<style>
+/* ══════════════════════════════════════════
+   行情日历 — Timeline Card Layout
+   ══════════════════════════════════════════ */
+
+#p-calendar {
+  max-width: 100%;
+  padding: 0;
+}
+
+/* Hide hero + FAQ when calendar tab is active */
+body.cal-active #heroCarousel,
+body.cal-active .faq-section {
+  display: none !important;
+}
+
+/* Full-bleed background shell */
+.cal-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 64px);
+  background: transparent;
+}
+
+/* Constrains inner content to match other pages (1020px) */
+.cal-inner {
+  max-width: 1020px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 28px;
+  box-sizing: border-box;
+}
+
+/* ── Top bar ── */
+.cal-topbar {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+}
+.cal-topbar-inner {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 56px;
+}
+.cal-topbar-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--text);
+  margin-right: 24px;
+  flex-shrink: 0;
+}
+.cal-day-tabs {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cal-day-tabs::-webkit-scrollbar { display: none; }
+.cal-day-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  gap: 1px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.cal-day-tab:hover { background: rgba(0,0,0,0.02); }
+.cal-day-tab.active { border-bottom-color: var(--green); }
+.cal-day-tab .dt-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.cal-day-tab .dt-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--t2);
+  line-height: 1;
+}
+.cal-day-tab.active .dt-name { color: var(--green); }
+.cal-day-tab.active .dt-num { color: var(--text); }
+.cal-day-tab.is-today .dt-num {
+  background: var(--green);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,185,107,0.35);
+  font-size: 15px;
+}
+.cal-day-tab .dt-dot {
+  position: absolute;
+  bottom: 6px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.cal-day-tab.has-events .dt-dot { opacity: 1; }
+.cal-day-tab.is-weekend .dt-name { color: rgba(232,54,79,0.5); }
+.cal-day-tab.is-weekend .dt-num { color: var(--t3); }
+
+.cal-topbar-nav {
+  display: flex;
+  gap: 6px;
+  margin-left: 16px;
+  flex-shrink: 0;
+  align-items: center;
+}
+.cal-tnav {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--t2);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.cal-tnav:hover { border-color: var(--green); color: var(--green); }
+.cal-tnav.today-btn {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+/* ET clock */
+.cal-et-clock {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 10px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.cal-et-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.cal-et-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+.cal-et-date {
+  font-size: 11px;
+  color: var(--t2);
+  margin-top: 3px;
+  line-height: 1;
+}
+
+/* Admin key at sidebar bottom */
+.cal-sidebar-admin {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.cal-admin-key {
+  width: 100%;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--t3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.cal-admin-key:hover { border-color: var(--green); color: var(--green); background: rgba(0,185,107,0.05); }
+.cal-admin-key.unlocked { border-color: var(--green); color: var(--green); background: rgba(0,185,107,0.08); }
+
+
+/* ── 行情指标带 Banner ── */
+.cal-banner {
+  background: linear-gradient(160deg, #f0fdf7 0%, #e8f8f0 30%, #eef6ff 70%, #f5f0ff 100%);
+  border-bottom: 1px solid rgba(0,185,107,0.12);
+  position: relative; overflow: hidden;
+}
+.cal-banner::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(0,185,107,0.09) 1px, transparent 1px);
+  background-size: 28px 28px; pointer-events: none;
+}
+.cal-banner::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none;
+}
+.cal-banner-inner {
+  max-width: 1020px; margin: 0 auto; padding: 16px 28px 24px;
+  position: relative; z-index: 1;
+}
+.cal-banner-groups { display: flex; gap: 0; align-items: flex-start; }
+.cal-banner-group {
+  flex: 1; min-width: 0; padding: 0 14px;
+  border-right: 1px solid rgba(0,0,0,0.07);
+}
+.cal-banner-group:first-child { padding-left: 0; }
+.cal-banner-group:last-child { border-right: none; padding-right: 0; }
+.cal-banner-group-title {
+  font-size: 9px; font-weight: 700; color: var(--t3);
+  letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 7px;
+}
+.cal-banner-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px; margin-bottom: 4px;
+}
+.cal-banner-name { font-size: 11px; color: var(--t2); white-space: nowrap; }
+.cal-banner-right { display: flex; align-items: center; gap: 4px; }
+.cal-banner-val {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  font-weight: 600; color: var(--text);
+}
+.cal-banner-chg {
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600;
+  padding: 1px 4px; border-radius: 3px; white-space: nowrap;
+}
+.cal-banner-chg.up { color: var(--green); background: rgba(0,185,107,0.08); }
+.cal-banner-chg.dn { color: var(--red); background: rgba(232,54,79,0.08); }
+.cal-banner-chg.flat { color: var(--t3); }
+.cal-banner-status {
+  font-size: 10px; color: var(--t3); text-align: right; margin-top: 6px;
+}
+
+/* week nav in sidebar */
+.cal-sidebar-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; gap: 4px;
+}
+.cal-snav-btn {
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--t2); cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s; padding: 0; line-height: 1;
+}
+.cal-snav-btn:hover { border-color: var(--green); color: var(--green); }
+.cal-snav-label {
+  font-size: 11px; font-weight: 700; color: var(--t3);
+  letter-spacing: 0.8px; text-transform: uppercase; flex: 1; text-align: center;
+}
+
+/* ── Main content area ── */
+.cal-body {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  min-height: 0;
+  max-width: 1020px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 28px;
+  box-sizing: border-box;
+  padding-top: 24px;
+  padding-bottom: 40px;
+  align-items: flex-start;
+}
+
+/* ── Left: 7-day mini-strip ── */
+.cal-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 20px 16px;
+  border-right: none;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--sh);
+  margin-right: 20px;
+  position: sticky;
+  top: 24px;
+  align-self: flex-start;
+}
+.cal-sidebar-week {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+.cal-sidebar-day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+  margin-bottom: 3px;
+}
+.cal-sidebar-day:hover { background: rgba(0,0,0,0.04); }
+.cal-sidebar-day.active { background: rgba(0,185,107,0.08); }
+.cal-sidebar-day.is-today .sd-num {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,185,107,0.3);
+}
+.sd-num {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--t2);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.sd-info { flex: 1; min-width: 0; }
+.sd-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3);
+  margin-bottom: 2px;
+}
+.cal-sidebar-day.active .sd-name { color: var(--green); }
+.sd-count {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.sd-pip {
+  width: 6px; height: 6px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.cal-sidebar-day.is-weekend .sd-name { color: rgba(232,54,79,0.45); }
+
+/* ── Right: cards feed ── */
+.cal-feed {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+/* dayhead removed — date shown in sidebar */
+.cal-feed-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--t3);
+}
+.cal-feed-empty .fe-icon { font-size: 40px; margin-bottom: 12px; }
+.cal-feed-empty .fe-t { font-size: 15px; color: var(--t2); font-weight: 500; margin-bottom: 6px; }
+.cal-feed-empty .fe-d { font-size: 13px; line-height: 1.7; }
+
+/* Category sections */
+.cal-cat-section { margin-bottom: 28px; }
+.cal-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cal-cat-icon { font-size: 15px; line-height: 1; }
+.cal-cat-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.cal-cat-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.cal-cat-count {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--t3);
+  background: var(--bg);
+  padding: 1px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+/* Event cards */
+.cal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.cal-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+  overflow: hidden;
+}
+.cal-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+.cal-card.imp-3::before { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.cal-card.imp-2::before { background: linear-gradient(180deg, #3b82f6, #2563eb); }
+.cal-card.imp-1::before { background: #cbd5e1; }
+
+.cal-card.imp-3 { border-color: rgba(245,158,11,0.2); }
+.cal-card.imp-2 { border-color: rgba(59,130,246,0.18); }
+
+.cal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.08);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.card-stars {
+  font-size: 11px;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.cal-card.imp-3 .card-stars { color: #f59e0b; }
+.cal-card.imp-2 .card-stars { color: #3b82f6; }
+.cal-card.imp-1 .card-stars { color: #94a3b8; }
+
+.card-time-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--t2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.card-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  word-break: break-all;
+}
+.cal-card.imp-3 .card-text { font-weight: 500; }
+.cal-card.imp-1 .card-text { color: var(--t2); }
+
+/* Forecast/Actual/Prev data row */
+/* compact inline data row */
+.card-data-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.card-data-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: auto;
+  min-height: 0;
+}
+.card-data-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+}
+.card-data-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t2);
+}
+.card-data-val.actual-beat { color: var(--green); }
+.card-data-val.actual-miss { color: var(--red); }
+.card-data-val.actual-inline { color: var(--text); }
+.card-data-val.empty { color: var(--t3); }
+/* desc tooltip */
+.card-desc-toggle {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--t3);
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: none;
+  font-family: inherit;
+  transition: color 0.1s;
+  flex-shrink: 0;
+}
+.card-desc-toggle:hover { color: var(--blue); }
+.card-desc-box {
+  display: none;
+  font-size: 11px;
+  color: var(--t2);
+  line-height: 1.65;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 7px;
+  border-left: 3px solid var(--blue);
+}
+.card-desc-box.open { display: block; }
+/* ── 行情指标带 Banner ── */
+.cal-banner {
+  background: linear-gradient(160deg, #f0fdf7 0%, #e8f8f0 30%, #eef6ff 70%, #f5f0ff 100%);
+  border-bottom: 1px solid rgba(0,185,107,0.12);
+  position: relative;
+  overflow: hidden;
+}
+.cal-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(0,185,107,0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+.cal-banner::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+.cal-banner-inner {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 18px 28px 26px;
+  position: relative; z-index: 1;
+}
+.cal-banner-groups {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.cal-banner-group {
+  flex: 1;
+  min-width: 0;
+  padding: 0 16px;
+  border-right: 1px solid rgba(0,0,0,0.07);
+}
+.cal-banner-group:first-child { padding-left: 0; }
+.cal-banner-group:last-child { border-right: none; }
+.cal-banner-group-title {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.cal-banner-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cal-banner-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.cal-banner-name {
+  font-size: 11px;
+  color: var(--t2);
+  white-space: nowrap;
+}
+.cal-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cal-banner-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cal-banner-chg {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.cal-banner-chg.up { color: var(--green); background: rgba(0,185,107,0.08); }
+.cal-banner-chg.dn { color: var(--red); background: rgba(232,54,79,0.08); }
+.cal-banner-chg.flat { color: var(--t3); background: var(--bg); }
+.cal-banner-loading {
+  font-size: 11px; color: var(--t3);
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 0;
+}
+@keyframes calSpin { to { transform: rotate(360deg); } }
+.cal-banner-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(0,185,107,0.2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: calSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+/* week nav in sidebar */
+.cal-sidebar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 4px;
+}
+.cal-sidebar-nav-btn {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--t2);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  padding: 0;
+}
+.cal-sidebar-nav-btn:hover { border-color: var(--green); color: var(--green); }
+.cal-sidebar-nav-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex: 1;
+  text-align: center;
+}
+
+/* ── Main content area ── */
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.card-auto-tag {
+  font-size: 10px;
+  color: var(--t3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.card-auto-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--t3);
+  display: inline-block;
+}
+.card-edit-btn {
+  display: none;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.2);
+  color: #3b82f6;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.card-edit-btn:hover { background: rgba(59,130,246,0.15); }
+.admin-mode .card-edit-btn { display: inline-block; }
+
+/* Add card button */
+.cal-add-card {
+  background: transparent;
+  border: 1.5px dashed rgba(0,0,0,0.12);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--t3);
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s;
+  width: 100%;
+  min-height: 80px;
+}
+.cal-add-card:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(0,185,107,0.02);
+}
+.admin-mode .cal-add-card { display: flex; }
+.cal-add-card { display: none; }
+
+/* ── Modal ── */
+.cal-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(14,17,26,0.5);
+  z-index: 800;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.cal-modal-overlay.open { display: flex; }
+.cal-modal-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px;
+  width: 460px;
+  max-width: 95vw;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+  animation: fadeUp 0.2s ease;
+}
+.cal-modal-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-form-group { margin-bottom: 14px; }
+.cal-form-label {
+  display: block;
+  font-size: 11px;
+  color: var(--t3);
+  letter-spacing: 1px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+.cal-form-input, .cal-form-select, .cal-form-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 9px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s;
+  outline: none;
+}
+.cal-form-input:focus, .cal-form-select:focus, .cal-form-textarea:focus {
+  border-color: var(--green);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,185,107,0.1);
+}
+.cal-form-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+.cal-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.cal-btn-save {
+  background: var(--green); color: #fff; border: none;
+  padding: 10px 24px; border-radius: 9px; cursor: pointer;
+  font-size: 13px; font-weight: 700; font-family: inherit;
+  box-shadow: 0 2px 10px rgba(0,185,107,0.3); transition: all 0.15s;
+}
+.cal-btn-save:hover { background: var(--green2); transform: translateY(-1px); }
+.cal-btn-cancel {
+  background: var(--bg); border: 1px solid var(--border); color: var(--t2);
+  border-radius: 9px; padding: 10px 16px; cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.cal-btn-danger {
+  background: rgba(232,54,79,0.07); color: var(--red);
+  border: 1px solid rgba(232,54,79,0.2); border-radius: 9px;
+  padding: 10px 14px; cursor: pointer; font-size: 13px;
+  font-family: inherit; margin-right: auto; transition: all 0.15s;
+}
+.cal-btn-danger:hover { background: rgba(232,54,79,0.14); }
+.cal-stars-row { display: flex; gap: 8px; align-items: center; }
+.cal-star-opt {
+  cursor: pointer; font-size: 24px; opacity: 0.2;
+  transition: opacity 0.12s, transform 0.1s; line-height: 1; color: #f59e0b;
+}
+.cal-star-opt.on { opacity: 1; }
+.cal-star-opt:hover { transform: scale(1.15); opacity: 0.7; }
+
+
+</style>
+
+<div class="cal-shell">
+
+  <!-- 行情指标带 Banner: hidden until data loads -->
+  <div class="cal-banner" id="calBanner" style="display:none;">
+    <div class="cal-banner-inner">
+      <div class="cal-banner-groups" id="calBannerGroups"></div>
+      <div class="cal-banner-status" id="calBannerStatus"></div>
+    </div>
+  </div>
+
+  <div class="cal-body">
+    <!-- Sidebar -->
+    <div class="cal-sidebar">
+      <!-- ET clock -->
+      <div class="cal-et-clock" id="calEtClock">
+        <div class="cal-et-label">美东时间 ET</div>
+        <div class="cal-et-time" id="calEtTime">--:--:--</div>
+        <div class="cal-et-date" id="calEtDate">----/--/--</div>
+      </div>
+      <!-- Week nav -->
+      <div class="cal-sidebar-nav">
+        <button class="cal-snav-btn" onclick="calNav(-1)" title="上一周">←</button>
+        <span class="cal-snav-label" id="calSidebarWeek"></span>
+        <button class="cal-snav-btn" onclick="calNav(1)" title="下一周">→</button>
+      </div>
+      <div id="calSidebarDays"></div>
+      <!-- Admin key -->
+      <div class="cal-sidebar-admin">
+        <button class="cal-admin-key" id="calAdminDot" title="设置">⚙ 设置</button>
+      </div>
+    </div>
+    <!-- Feed -->
+    <div class="cal-feed" id="calFeed"></div>
+  </div>
+</div>
+
+<!-- Event edit modal -->
+<div class="cal-modal-overlay" id="calModal">
+  <div class="cal-modal-box">
+    <div class="cal-modal-title" id="calModalTitle">添加事件</div>
+    <input type="hidden" id="cal-ev-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="cal-form-group">
+        <label class="cal-form-label">日期</label>
+        <input class="cal-form-input" type="date" id="cal-f-date">
+      </div>
+      <div class="cal-form-group">
+        <label class="cal-form-label">时间 ET（选填）</label>
+        <input class="cal-form-input" type="text" id="cal-f-time" placeholder="如 08:30">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="cal-form-group">
+        <label class="cal-form-label">分类</label>
+        <select class="cal-form-select" id="cal-f-cat" onchange="calCatChange(this.value)">
+          <option value="数据">📊 数据</option>
+          <option value="事件">📌 事件</option>
+          <option value="财报">💰 财报</option>
+          <option value="大会">🎙 大会</option>
+        </select>
+      </div>
+      <div class="cal-form-group">
+        <label class="cal-form-label">重要性</label>
+        <div class="cal-stars-row" id="calStarsRow" style="padding-top:10px;">
+          <span class="cal-star-opt on" data-v="1">★</span>
+          <span class="cal-star-opt" data-v="2">★</span>
+          <span class="cal-star-opt" data-v="3">★</span>
+        </div>
+      </div>
+    </div>
+    <div class="cal-form-group">
+      <label class="cal-form-label">内容</label>
+      <textarea class="cal-form-textarea" id="cal-f-text" placeholder="事件描述..."></textarea>
+    </div>
+    <!-- Data fields: forecast / previous / actual — shown for 数据 category -->
+    <div id="calDataFields" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="cal-form-group">
+          <label class="cal-form-label">预测</label>
+          <input class="cal-form-input" type="text" id="cal-f-forecast" placeholder="如 200K">
+        </div>
+        <div class="cal-form-group">
+          <label class="cal-form-label">前值</label>
+          <input class="cal-form-input" type="text" id="cal-f-prev" placeholder="如 185K">
+        </div>
+        <div class="cal-form-group">
+          <label class="cal-form-label">实际 <span style="color:var(--green);font-size:9px;">发布后填</span></label>
+          <input class="cal-form-input" type="text" id="cal-f-actual" placeholder="如 227K">
+        </div>
+      </div>
+    </div>
+    <div class="cal-modal-actions">
+      <button class="cal-btn-danger" id="calBtnDel" style="display:none;margin-right:auto" onclick="calDeleteEvent()">删除</button>
+      <button class="cal-btn-cancel" onclick="calCloseModal()">取消</button>
+      <button class="cal-btn-save" onclick="calSaveEvent()">保存</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end p-calendar -->
+
 <!-- ═══════════════ SCRIPT ═══════════════ -->
 <script>
 // ════════════════════════════════════════════════════
@@ -1180,7 +2124,91 @@ async function initAuth() {
   if (session?.user) {
     await onLogin(session.user);
   } else {
-    D = localLoad();
+    D = lo
+// ── Market Banner fetch (Yahoo Finance) ──────────────────────────────────────
+async function fetchMarketBanner() {
+  const grp = document.getElementById('calBannerGroups');
+  const sta = document.getElementById('calBannerStatus');
+  if (!grp) return;
+
+  const tickers = [
+    // group, name, symbol
+    ['美股指数', '纳指', '^IXIC'],
+    ['美股指数', '道指', '^DJI'],
+    ['美股指数', '标普', '^GSPC'],
+    ['美股指数', '罗素', '^RUT'],
+    ['期货/商品', '标普期货', 'ES=F'],
+    ['期货/商品', 'WTI原油', 'CL=F'],
+    ['期货/商品', '黄金', 'GC=F'],
+    ['美元/债券', '美元指数', 'DX-Y.NYB'],
+    ['美元/债券', '美债10Y', '^TNX'],
+    ['美债/风险', '美债2Y', '^IRX'],
+    ['美债/风险', 'VIX恐慌', '^VIX'],
+    ['美债/风险', 'VVIX', '^VVIX'],
+  ];
+
+  const symbols = tickers.map(t => t[2]).join(',');
+  const url = 'https://query1.finance.yahoo.com/v8/finance/spark?symbols=' + encodeURIComponent(symbols) + '&range=1d&interval=5m';
+
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    // Build group map
+    const groups = {};
+    tickers.forEach(([gName, name, sym]) => {
+      if (!groups[gName]) groups[gName] = [];
+      const spark = data.spark?.result?.find(r => r.symbol === sym);
+      let val = '—', chg = '', chgCls = 'flat';
+      if (spark && spark.response && spark.response[0]) {
+        const quotes = spark.response[0].meta;
+        const price = quotes.regularMarketPrice;
+        const prev  = quotes.chartPreviousClose || quotes.previousClose;
+        if (price != null) {
+          val = price >= 1000 ? price.toLocaleString('en-US', {maximumFractionDigits:0})
+                              : price.toFixed(price < 10 ? 2 : 2);
+          if (prev) {
+            const pct = ((price - prev) / prev * 100);
+            chg = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+            chgCls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'flat';
+          }
+        }
+      }
+      groups[gName].push({ name, val, chg, chgCls });
+    });
+
+    const groupOrder = ['美股指数','期货/商品','美元/债券','美债/风险'];
+    grp.innerHTML = groupOrder.map(gName => {
+      const items = groups[gName] || [];
+      return '<div class="cal-banner-group">' +
+        '<div class="cal-banner-group-title">' + gName + '</div>' +
+        items.map(it =>
+          '<div class="cal-banner-item">' +
+            '<span class="cal-banner-name">' + it.name + '</span>' +
+            '<span class="cal-banner-right">' +
+              '<span class="cal-banner-val">' + it.val + '</span>' +
+              (it.chg ? '<span class="cal-banner-chg ' + it.chgCls + '">' + it.chg + '</span>' : '') +
+            '</span>' +
+          '</div>'
+        ).join('') +
+      '</div>';
+    }).join('');
+
+    // Show banner only when data loaded
+    const banner = document.getElementById('calBanner');
+    if (banner) banner.style.display = '';
+    const now = new Date();
+    if (sta) sta.textContent = 'Yahoo Finance · ET ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+
+  } catch(e) {
+    // CORS/network fail — keep banner hidden, no ugly loading state
+    const banner = document.getElementById('calBanner');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+calLoad();
     if (!D.length) { D = demoData(); localSave(); }
     renderNavGuest();
     drawAll();
@@ -3771,6 +4799,516 @@ document.addEventListener('DOMContentLoaded', function(){
 
   resetTimer();
 });
+</script>
+
+<script>
+// ════════════════════════════════════════
+// 行情日历 JS — Timeline Card Layout
+// ════════════════════════════════════════
+(function() {
+
+const CAL_KEY       = 'wr_cal_events_v1';
+const CAL_ADMIN_KEY = 'wr_cal_admin';
+
+const ROW_META = [
+  { key: '数据', icon: '📊', color: '#3b82f6' },
+  { key: '事件', icon: '📌', color: '#8b5cf6' },
+  { key: '财报', icon: '💰', color: '#f59e0b' },
+  { key: '大会', icon: '🎙', color: '#10b981' },
+];
+const DAY_NAMES = ['周一','周二','周三','周四','周五','周六','周日'];
+
+let calOffset      = 0;
+let calActiveDay   = null;
+let calAdminMode   = !!(localStorage.getItem(CAL_ADMIN_KEY));
+let calEvents      = [];
+let calSelectedStars = 1;
+let calEditingId   = null;
+let calAdminClicks = 0, calAdminTimer = null;
+
+function calLoad() {
+  try { calEvents = JSON.parse(localStorage.getItem(CAL_KEY)) || []; } catch(e) { calEvents = []; }
+}
+function calSave() {
+  try { localStorage.setItem(CAL_KEY, JSON.stringify(calEvents)); } catch(e) {}
+}
+
+function getWeek(offset) {
+  const now = new Date();
+  const dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
+  return Array.from({length: 7}, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+function dateFmt(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function isToday(d) { return d.toDateString() === new Date().toDateString(); }
+function isWeekend(d) { return d.getDay() === 0 || d.getDay() === 6; }
+
+// ── ET clock ─────────────────────────────────────
+function startEtClock() {
+  function tick() {
+    const now = new Date();
+    // ET = UTC-5 (EST) or UTC-4 (EDT)
+    // Use Intl to get accurate ET time
+    const etTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).format(now);
+    const etDate = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'America/New_York',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      weekday: 'short',
+    }).format(now);
+    const tEl = document.getElementById('calEtTime');
+    const dEl = document.getElementById('calEtDate');
+    if (tEl) tEl.textContent = etTime;
+    if (dEl) dEl.textContent = etDate;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── Built-in recurring economic events ───────────
+// These are well-known recurring US macro events placed on approximate dates.
+// Keyed by: { month (1-12), weekOfMonth (1-5), dayOfWeek (0=Sun..6=Sat), or 'lastFri' etc. }
+// We generate them for the visible week dynamically.
+
+// ── Data event descriptions ───────────────────────────────────────────────
+const MACRO_DESCS = {
+  'NFP':  '每月首个周五公布的非农就业人数，衡量美国就业市场健康度。数字高于预期→就业强劲→美元走强/美债收益率上升；低于预期→就业疲软。',
+  'CPI':  '消费者物价指数，衡量通货膨胀最直接的指标。高于预期→通胀压力大→美联储倾向加息→美元走强；低于预期→通胀放缓，市场可能提前押注降息。',
+  'PPI':  '生产者物价指数，衡量生产端通胀，常被视为CPI的先行指标。PPI走高意味着企业成本上升，后续可能传导至CPI。',
+  'Claims': '每周申请失业救济人数。数字上升→就业市场恶化；数字下降→就业市场改善。持续高位则美联储更有降息空间。',
+  'Retail': '零售销售额反映消费者支出，是美国GDP的重要组成（约70%）。数字强劲→消费旺盛→经济韧性强→美联储降息压力减小。',
+  'GDP':  '国内生产总值，衡量经济整体产出。初值、修正值、终值依次发布。与预期偏差越大，市场波动越剧烈。',
+  'PCE':  '个人消费支出物价指数，美联储最重视的通胀参考指标（优先于CPI）。核心PCE剔除食品和能源，是政策制定的核心依据。',
+  'ISM':  'ISM制造业PMI，50以上表示扩张，50以下表示收缩。领先指标，反映制造业整体景气度，影响美元和股市情绪。',
+  'FOMC': '联邦公开市场委员会利率决议，美联储最重要的货币政策会议。决定基准利率方向，全球市场高度关注，声明和点阵图同等重要。',
+};
+
+function getEventDesc(text) {
+  if (/NFP|非农/.test(text)) return MACRO_DESCS.NFP;
+  if (/CPI|消费者物价/.test(text)) return MACRO_DESCS.CPI;
+  if (/PPI|生产者物价/.test(text)) return MACRO_DESCS.PPI;
+  if (/失业金|Claims/.test(text)) return MACRO_DESCS.Claims;
+  if (/零售|Retail/.test(text)) return MACRO_DESCS.Retail;
+  if (/GDP/.test(text)) return MACRO_DESCS.GDP;
+  if (/PCE/.test(text)) return MACRO_DESCS.PCE;
+  if (/ISM|PMI/.test(text)) return MACRO_DESCS.ISM;
+  if (/FOMC|利率决议/.test(text)) return MACRO_DESCS.FOMC;
+  return '';
+}
+
+window.calToggleDesc = function(id) {
+  const box = document.getElementById('desc_' + id);
+  if (box) box.classList.toggle('open');
+};
+
+function getBuiltinEvents(dates) {
+  const events = [];
+  const weekStart = dates[0];
+  const weekEnd   = dates[6];
+  const yr  = weekStart.getFullYear();
+  const mo  = weekStart.getMonth() + 1; // 1-12
+
+  // Helper: find nth weekday of a month
+  function nthWeekday(year, month, weekday, n) {
+    // weekday: 0=Sun,1=Mon...5=Fri,6=Sat
+    const d = new Date(year, month - 1, 1);
+    let count = 0;
+    while (d.getMonth() === month - 1) {
+      if (d.getDay() === weekday) { count++; if (count === n) return new Date(d); }
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  }
+  // Last weekday of month
+  function lastWeekday(year, month, weekday) {
+    const d = new Date(year, month, 0); // last day of month
+    while (d.getDay() !== weekday) d.setDate(d.getDate() - 1);
+    return d;
+  }
+  // Add if in week
+  function addIf(dateObj, category, text, time, stars) {
+    if (!dateObj) return;
+    const ds = dateFmt(dateObj);
+    if (ds >= dateFmt(weekStart) && ds <= dateFmt(weekEnd)) {
+      // Don't duplicate if already manually added
+      const exists = calEvents.some(e => !e.auto && e.date === ds && e.text.slice(0,20) === text.slice(0,20));
+      if (!exists) events.push({ id: 'bi_'+ds+'_'+text.slice(0,8).replace(/\s/g,''), date: ds, time, category, stars, text, auto: true, builtin: true, weekStart: dateFmt(dates[0]) });
+    }
+  }
+
+  // ── Monthly recurring macro events ──
+  // Non-farm Payrolls: first Friday of month
+  addIf(nthWeekday(yr, mo, 5, 1), '数据', '🇺🇸 非农就业人数 NFP (美东 8:30)', '08:30', 3);
+  // also prev month for overlap
+  const prevMo = mo === 1 ? 12 : mo - 1;
+  const prevYr = mo === 1 ? yr - 1 : yr;
+  addIf(nthWeekday(prevYr, prevMo, 5, 1), '数据', '🇺🇸 非农就业人数 NFP (美东 8:30)', '08:30', 3);
+
+  // CPI: usually 2nd or 3rd Wednesday
+  addIf(nthWeekday(yr, mo, 3, 2), '数据', '🇺🇸 CPI 消费者物价指数 (美东 8:30)', '08:30', 3);
+  addIf(nthWeekday(prevYr, prevMo, 3, 2), '数据', '🇺🇸 CPI 消费者物价指数 (美东 8:30)', '08:30', 3);
+
+  // PPI: usually Thursday after CPI
+  addIf(nthWeekday(yr, mo, 4, 2), '数据', '🇺🇸 PPI 生产者物价指数 (美东 8:30)', '08:30', 2);
+  addIf(nthWeekday(prevYr, prevMo, 4, 2), '数据', '🇺🇸 PPI 生产者物价指数 (美东 8:30)', '08:30', 2);
+
+  // Initial Jobless Claims: every Thursday
+  dates.forEach(d => {
+    if (d.getDay() === 4) { // Thursday
+      addIf(d, '数据', '🇺🇸 初请失业金人数 (美东 8:30)', '08:30', 2);
+    }
+  });
+
+  // Retail Sales: mid-month Wednesday
+  addIf(nthWeekday(yr, mo, 3, 3), '数据', '🇺🇸 零售销售月率 (美东 8:30)', '08:30', 2);
+  addIf(nthWeekday(prevYr, prevMo, 3, 3), '数据', '🇺🇸 零售销售月率 (美东 8:30)', '08:30', 2);
+
+  // FOMC: 8 times/year — Jan, Mar, May, Jun, Jul, Sep, Nov, Dec (Wed)
+  const fomcMonths = [1,3,5,6,7,9,11,12];
+  if (fomcMonths.includes(mo)) {
+    addIf(nthWeekday(yr, mo, 3, 3), '事件', '🏦 FOMC 利率决议 (美东 14:00)', '14:00', 3);
+  }
+  if (fomcMonths.includes(prevMo)) {
+    addIf(nthWeekday(prevYr, prevMo, 3, 3), '事件', '🏦 FOMC 利率决议 (美东 14:00)', '14:00', 3);
+  }
+
+  // Fed Chair press conference: same day as FOMC
+  if (fomcMonths.includes(mo)) {
+    addIf(nthWeekday(yr, mo, 3, 3), '事件', '🎙 美联储主席新闻发布会 (美东 14:30)', '14:30', 3);
+  }
+
+  // GDP: last month of each quarter (Mar, Jun, Sep, Dec), 3rd Thursday
+  if ([3,6,9,12].includes(mo)) {
+    addIf(nthWeekday(yr, mo, 4, 3), '数据', '🇺🇸 GDP 季率初值 (美东 8:30)', '08:30', 3);
+  }
+  if ([3,6,9,12].includes(prevMo)) {
+    addIf(nthWeekday(prevYr, prevMo, 4, 3), '数据', '🇺🇸 GDP 季率初值 (美东 8:30)', '08:30', 3);
+  }
+
+  // PCE: last Friday of month
+  addIf(lastWeekday(yr, mo, 5), '数据', '🇺🇸 PCE 个人消费支出物价指数 (美东 8:30)', '08:30', 3);
+  addIf(lastWeekday(prevYr, prevMo, 5), '数据', '🇺🇸 PCE 个人消费支出物价指数 (美东 8:30)', '08:30', 3);
+
+  // ISM Manufacturing: first business day of month
+  addIf(nthWeekday(yr, mo, 1, 1), '数据', '🇺🇸 ISM 制造业 PMI (美东 10:00)', '10:00', 2);
+  addIf(nthWeekday(prevYr, prevMo, 1, 1), '数据', '🇺🇸 ISM 制造业 PMI (美东 10:00)', '10:00', 2);
+
+  return events;
+}
+
+async function fetchAutoEvents(weekDates) {
+  const weekStr = dateFmt(weekDates[0]);
+
+  // 1. Always inject built-in economic events (idempotent)
+  const builtins = getBuiltinEvents(weekDates);
+  let changed = false;
+  builtins.forEach(ev => {
+    if (!calEvents.some(e => e.id === ev.id)) {
+      calEvents.push(ev);
+      changed = true;
+    }
+  });
+  if (changed) { calSave(); }
+
+  // 2. Try RSS for news headlines (once per week)
+  const alreadyFetched = calEvents.some(e => e.auto && !e.builtin && e.weekStart === weekStr);
+  if (!alreadyFetched) {
+    try {
+      const res = await fetch(
+        'https://api.rss2json.com/v1/api.json?rss_url=' +
+        encodeURIComponent('https://finance.yahoo.com/rss/topstories') +
+        '&api_key=public&count=20',
+        { signal: AbortSignal.timeout(6000) }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items) {
+          const today = dateFmt(new Date());
+          const existing = new Set(calEvents.filter(e=>e.auto && !e.builtin).map(e=>e.text.slice(0,30)));
+          let added = 0;
+          for (const item of data.items.slice(0, 12)) {
+            const title = (item.title || '').trim();
+            if (!title || existing.has(title.slice(0,30)) || added >= 5) continue;
+            const isHigh = /fed|GDP|CPI|PPI|NFP|payroll|rate decision|tariff|recession/i.test(title);
+            calEvents.push({
+              id: 'rss_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+              date: today, time: '', category: '事件',
+              stars: isHigh ? 3 : 2,
+              text: title.length > 100 ? title.slice(0, 100) + '…' : title,
+              auto: true, builtin: false, weekStart: weekStr,
+            });
+            added++;
+          }
+          if (added) calSave();
+        }
+      }
+    } catch(e) {}
+  }
+
+  renderAll();
+}
+
+function renderAll() {
+  const dates = getWeek(calOffset);
+  if (!calActiveDay) {
+    const todayInWeek = dates.find(d => isToday(d));
+    calActiveDay = dateFmt(todayInWeek || dates[0]);
+  }
+  renderSidebar(dates);
+  renderFeed();
+  const shell = document.querySelector('.cal-shell');
+  if (shell) shell.classList.toggle('admin-mode', calAdminMode);
+}
+
+function renderTopTabs(dates) {
+  const c = document.getElementById('calDayTabs');
+  if (!c) return;
+  c.innerHTML = dates.map((d, i) => {
+    const dStr = dateFmt(d);
+    const evCount = calEvents.filter(e => e.date === dStr).length;
+    const isActive = dStr === calActiveDay;
+    const cls = ['cal-day-tab', isActive?'active':'', isToday(d)?'is-today':'', isWeekend(d)?'is-weekend':'', evCount>0?'has-events':''].filter(Boolean).join(' ');
+    return '<div class="' + cls + '" onclick="calSelectDay(\'' + dStr + '\')">' +
+      '<span class="dt-name">' + DAY_NAMES[i] + '</span>' +
+      '<span class="dt-num">' + d.getDate() + '</span>' +
+      '<span class="dt-dot"></span></div>';
+  }).join('');
+}
+
+function renderSidebar(dates) {
+  const sw = document.getElementById('calSidebarWeek');
+  if (sw) {
+    const offset = calOffset;
+    const label = offset === 0 ? '本周' : offset === -1 ? '上周' : offset === 1 ? '下周' : (offset < 0 ? Math.abs(offset)+'周前' : offset+'周后');
+    sw.textContent = label;
+  }
+  const sd = document.getElementById('calSidebarDays');
+  if (!sd) return;
+  sd.innerHTML = dates.map((d, i) => {
+    const dStr = dateFmt(d);
+    const evs = calEvents.filter(e => e.date === dStr);
+    const isActive = dStr === calActiveDay;
+    const cls = ['cal-sidebar-day', isActive?'active':'', isToday(d)?'is-today':'', isWeekend(d)?'is-weekend':''].filter(Boolean).join(' ');
+    const pips = ROW_META.map(r => {
+      const cnt = evs.filter(e => e.category === r.key).length;
+      return cnt > 0 ? '<span class="sd-pip" style="background:' + r.color + '" title="' + r.key + ' ' + cnt + '条"></span>' : '';
+    }).join('');
+    return '<div class="' + cls + '" onclick="calSelectDay(\'' + dStr + '\')">' +
+      '<div class="sd-num">' + d.getDate() + '</div>' +
+      '<div class="sd-info">' +
+        '<div class="sd-name">' + DAY_NAMES[i] + (isToday(d) ? ' · 今天' : '') + '</div>' +
+        '<div class="sd-count">' + (pips || '<span style="font-size:10px;color:var(--t3)">暂无</span>') + '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+function renderFeed() {
+  const feed = document.getElementById('calFeed');
+  if (!feed || !calActiveDay) return;
+  const dayEvs = calEvents.filter(e => e.date === calActiveDay);
+  let html = '';
+  let hasAny = false;
+  ROW_META.forEach(function(row) {
+    const evs = dayEvs.filter(e => e.category === row.key);
+    if (!evs.length && !calAdminMode) return;
+    hasAny = true;
+    html += '<div class="cal-cat-section">' +
+      '<div class="cal-cat-head">' +
+        '<span class="cal-cat-icon">' + row.icon + '</span>' +
+        '<span class="cal-cat-name">' + row.key + '</span>' +
+        '<div class="cal-cat-line"></div>' +
+        '<span class="cal-cat-count">' + evs.length + '</span>' +
+      '</div><div class="cal-cards-grid">';
+    evs.forEach(function(ev) {
+      const imp = ev.stars >= 3 ? 'imp-3' : ev.stars === 2 ? 'imp-2' : 'imp-1';
+      const stars = '★'.repeat(ev.stars || 1);
+      const timePill = ev.time ? '<span class="card-time-pill">ET ' + ev.time + '</span>' : '';
+      const autoTag = ev.auto ? '<span class="card-auto-tag"><span class="card-auto-dot"></span>自动</span>' : '<span></span>';
+
+      // Data row + desc for 数据 category
+      let dataRow = '';
+      let descHtml = '';
+      if (row.key === '数据') {
+        let actualCls = '';
+        let actualVal = ev.actual || '—';
+        if (ev.actual && ev.forecast) {
+          const a = parseFloat(ev.actual.replace(/[^0-9.\-]/g,''));
+          const f = parseFloat(ev.forecast.replace(/[^0-9.\-]/g,''));
+          if (!isNaN(a) && !isNaN(f)) actualCls = a > f ? 'actual-beat' : a < f ? 'actual-miss' : 'actual-inline';
+        }
+        const fv = ev.forecast || '—', pv = ev.prev || '—';
+        // Only show data row if at least one value exists
+        const hasData = fv !== '—' || pv !== '—' || actualVal !== '—';
+        dataRow = hasData ? '<div class="card-data-row">' +
+          '<div class="card-data-cell"><span class="card-data-label">预测</span> <span class="card-data-val' + (fv==='—'?' empty':'') + '">' + fv + '</span></div>' +
+          '<div class="card-data-cell"><span class="card-data-label">前值</span> <span class="card-data-val' + (pv==='—'?' empty':'') + '">' + pv + '</span></div>' +
+          '<div class="card-data-cell"><span class="card-data-label">实际</span> <span class="card-data-val ' + (actualVal==='—'?'empty':actualCls) + '">' + actualVal + '</span></div>' +
+          '</div>' : '';
+        const desc = getEventDesc(ev.text);
+        if (desc) {
+          descHtml = '<button class="card-desc-toggle" onclick="calToggleDesc(\'' + ev.id + '\')">释义 ▾</button>' +
+            '<div class="card-desc-box" id="desc_' + ev.id + '">' + desc + '</div>';
+        }
+      }
+
+      html += '<div class="cal-card ' + imp + '">' +
+        '<div class="card-top"><span class="card-stars">' + stars + '</span>' + timePill + '</div>' +
+        '<div class="card-text">' + ev.text + '</div>' +
+        dataRow + descHtml +
+        '<div class="card-footer">' + autoTag +
+          '<button class="card-edit-btn" onclick="calEditEvent(\'' + ev.id + '\')">编辑</button>' +
+        '</div></div>';
+    });
+    html += '<button class="cal-add-card" onclick="calOpenModal(\'' + calActiveDay + '\',\'' + row.key + '\',null)">' +
+      '<span style="font-size:20px;opacity:0.4">＋</span><span>添加' + row.key + '事件</span></button>';
+    html += '</div></div>';
+  });
+  if (!hasAny) {
+    html += '<div class="cal-feed-empty"><div class="fe-icon">📭</div>' +
+      '<div class="fe-t">当日暂无行情事件</div>' +
+      '<div class="fe-d">切换到其他日期查看，<br>或开启编辑模式手动添加</div></div>';
+  }
+  feed.innerHTML = html;
+}
+
+window.calSelectDay = function(dateStr) {
+  calActiveDay = dateStr;
+  const dates = getWeek(calOffset);
+  renderSidebar(dates);
+  renderFeed();
+};
+
+window.calNav = function(dir) {
+  if (dir === 0) { calOffset = 0; }
+  else { calOffset += dir; }
+  const dates = getWeek(calOffset);
+  const todayInWeek = dates.find(d => isToday(d));
+  calActiveDay = dateFmt(todayInWeek || dates[0]);
+  renderAll();
+  if (calOffset === 0) fetchAutoEvents(dates);
+};
+
+function calAdminClick() {
+  calAdminClicks++;
+  clearTimeout(calAdminTimer);
+  calAdminTimer = setTimeout(function() { calAdminClicks = 0; }, 1200);
+  if (calAdminClicks >= 5) {
+    calAdminClicks = 0;
+    if (calAdminMode) {
+      calAdminMode = false;
+      localStorage.removeItem(CAL_ADMIN_KEY);
+      document.getElementById('calAdminDot').classList.remove('unlocked');
+      renderAll();
+    } else {
+      const pw = prompt('管理员密码:');
+      if (pw === 'winrate2025') {
+        calAdminMode = true;
+        localStorage.setItem(CAL_ADMIN_KEY, '1');
+        document.getElementById('calAdminDot').classList.add('unlocked');
+        renderAll();
+        alert('✅ 编辑模式已开启');
+      } else if (pw !== null) {
+        alert('密码错误');
+      }
+    }
+  }
+}
+
+window.calCatChange = function(val) {
+  const df = document.getElementById('calDataFields');
+  if (df) df.style.display = val === '数据' ? 'block' : 'none';
+};
+
+function calOpenModal(date, cat, eventId) {
+  calEditingId = eventId;
+  const ev = eventId ? calEvents.find(e => e.id === eventId) : null;
+  document.getElementById('calModalTitle').textContent = ev ? '编辑事件' : '添加事件';
+  document.getElementById('cal-ev-id').value = eventId || '';
+  document.getElementById('cal-f-date').value = ev ? ev.date : date;
+  document.getElementById('cal-f-time').value = ev ? (ev.time || '') : '';
+  const catVal = ev ? ev.category : cat;
+  document.getElementById('cal-f-cat').value = catVal;
+  document.getElementById('cal-f-text').value = ev ? ev.text : '';
+  document.getElementById('cal-f-forecast').value = ev ? (ev.forecast || '') : '';
+  document.getElementById('cal-f-prev').value = ev ? (ev.prev || '') : '';
+  document.getElementById('cal-f-actual').value = ev ? (ev.actual || '') : '';
+  document.getElementById('calBtnDel').style.display = ev ? 'inline-block' : 'none';
+  const df = document.getElementById('calDataFields');
+  if (df) df.style.display = catVal === '数据' ? 'block' : 'none';
+  calSetStars(ev ? (ev.stars || 1) : 1);
+  document.getElementById('calModal').classList.add('open');
+}
+function calCloseModal() { document.getElementById('calModal').classList.remove('open'); }
+function calEditEvent(id) { const ev = calEvents.find(e => e.id === id); if (ev) calOpenModal(ev.date, ev.category, id); }
+function calSetStars(n) {
+  calSelectedStars = n;
+  document.querySelectorAll('.cal-star-opt').forEach(function(s) { s.classList.toggle('on', parseInt(s.dataset.v) <= n); });
+}
+function calSaveEvent() {
+  const text = document.getElementById('cal-f-text').value.trim();
+  if (!text) { alert('请填写内容'); return; }
+  const ev = {
+    id: calEditingId || ('ev_' + Date.now() + '_' + Math.random().toString(36).slice(2,5)),
+    date: document.getElementById('cal-f-date').value,
+    time: document.getElementById('cal-f-time').value.trim(),
+    category: document.getElementById('cal-f-cat').value,
+    stars: calSelectedStars, text: text, auto: false,
+    forecast: document.getElementById('cal-f-forecast').value.trim(),
+    prev: document.getElementById('cal-f-prev').value.trim(),
+    actual: document.getElementById('cal-f-actual').value.trim(),
+  };
+  if (calEditingId) { const i = calEvents.findIndex(e => e.id === calEditingId); if (i >= 0) calEvents[i] = ev; }
+  else { calEvents.push(ev); calActiveDay = ev.date; }
+  calSave(); calCloseModal(); renderAll();
+}
+function calDeleteEvent() {
+  if (!calEditingId || !confirm('确认删除？')) return;
+  calEvents = calEvents.filter(e => e.id !== calEditingId);
+  calSave(); calCloseModal(); renderAll();
+}
+
+window.calEditEvent   = calEditEvent;
+window.calOpenModal   = calOpenModal;
+window.calCloseModal  = calCloseModal;
+window.calSaveEvent   = calSaveEvent;
+window.calCatChange   = window.calCatChange; // already on window
+window.calDeleteEvent = calDeleteEvent;
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('cal-star-opt')) calSetStars(parseInt(e.target.dataset.v));
+  if (e.target.id === 'calModal') calCloseModal();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const dot = document.getElementById('calAdminDot');
+  if (dot) { dot.addEventListener('click', calAdminClick); if (calAdminMode) dot.classList.add('unlocked'); }
+  startEtClock();
+});
+
+const _origGo = window.go;
+window.go = function(id, el) {
+  _origGo(id, el);
+  document.body.classList.toggle('cal-active', id === 'calendar');
+  if (id === 'calendar') {
+    renderAll();
+    fetchAutoEvents(getWeek(calOffset));
+    fetchMarketBanner();
+  }
+};
+
+calLoad();
+
+})();
 </script>
 
 </body>
